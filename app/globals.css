@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/*
+  ResQd palette. The emergency-priority colors are lifted verbatim from the
+  product (CAPSTONE_HANDOFF.md) so the site and the app read as one system.
+*/
+:root {
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --surface-2: #1c1c20;
+  --border: #2a2a30;
+  --text: #f5f5f5;
+  --muted: #a1a1aa;
+
+  --urgent: #d92d20; /* primary */
+  --high: #f79009;
+  --medium: #fdb022;
+  --safe: #16b364;
+  --mark: #ff2a1a; /* brand mark red */
+
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-urgent: var(--urgent);
+  --color-high: var(--high);
+  --color-medium: var(--medium);
+  --color-safe: var(--safe);
+  --color-mark: var(--mark);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+  /* offset anchor jumps so the sticky nav doesn't cover section headings */
+  scroll-padding-top: 5rem;
+  background: var(--bg);
+  /* reserve the scrollbar gutter so locking scroll never shifts the layout */
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--urgent);
+  color: #fff;
+}
+
+/* Thin, unobtrusive scrollbar on the dark ground */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #33333a;
+  border-radius: 999px;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Small secondary / label text: the display face, tight and set in caps. */
+.label {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* Genuinely monospaced readouts (numbers, coordinates, code). */
+.readout {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Warm radial glow used behind the hero and the waitlist */
+.ember-glow {
+  background:
+    radial-gradient(60% 55% at 50% 0%, rgba(217, 45, 32, 0.18), transparent 70%),
+    radial-gradient(40% 40% at 80% 20%, rgba(247, 144, 9, 0.1), transparent 70%);
+}
+
+/*
+  Slow-drifting ember field behind the whole page. Fixed, non-interactive,
+  sits just above the body background and below all content.
+*/
+.page-aura {
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 44% at 15% 8%, rgba(217, 45, 32, 0.22), transparent 70%),
+    radial-gradient(36% 40% at 88% 20%, rgba(247, 144, 9, 0.16), transparent 70%),
+    radial-gradient(50% 52% at 65% 92%, rgba(217, 45, 32, 0.14), transparent 72%),
+    radial-gradient(42% 46% at 28% 72%, rgba(22, 179, 100, 0.07), transparent 74%);
+  filter: blur(50px) saturate(1.15);
+  animation: aura-drift 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes aura-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-3%, 3%, 0) scale(1.08) rotate(1.5deg);
+  }
+  100% {
+    transform: translate3d(3%, -2%, 0) scale(1.04) rotate(-1deg);
+  }
+}
+
+.hairline-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@keyframes resqd-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes resqd-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.72;
+  }
+  70% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes resqd-dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Red glow for the at-risk hero sensor */
+@keyframes sensor-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(217, 45, 32, 0.55),
+      0 0 14px 3px rgba(217, 45, 32, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(217, 45, 32, 0),
+      0 0 24px 8px rgba(217, 45, 32, 0.8);
+  }
+}
+.sensor-glow {
+  animation: sensor-glow 2s ease-in-out infinite;
+}
+
+@keyframes hero-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.55);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+.hero-ring {
+  animation: hero-ring 3s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
