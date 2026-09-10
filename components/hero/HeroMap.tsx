@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Icon } from "@/components/ui/Icon";
 
@@ -131,6 +131,9 @@ const PHONES = [
   { x: 58, y: 3 },
   { x: 88, y: 40 },
 ];
+// On phones: one device, pushed well away from the fire/broadcast cluster at
+// the top of the ring but still inside it, so it reads as its own point.
+const PHONES_COMPACT = [{ x: 72, y: 42 }];
 
 const ALL: Entity[] = [...FIRES, SAFE, BROADCAST];
 
@@ -145,13 +148,13 @@ const WAVE_PERIOD = 3;
 
 // How far each phone sits from the broadcast origin, normalised 0..1, so the
 // alert "reaches" the nearest phone first and the farthest one last.
-const phoneDelays = (() => {
-  const d = PHONES.map((p) =>
+function phoneDelays(phones: { x: number; y: number }[]) {
+  const d = phones.map((p) =>
     Math.hypot(p.x - BROADCAST.x, p.y - BROADCAST.y),
   );
-  const max = Math.max(...d);
+  const max = Math.max(...d, 0.001);
   return d.map((v) => (v / max) * 2);
-})();
+}
 
 export function HeroMap() {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -160,95 +163,139 @@ export function HeroMap() {
     setOpenId((cur) => (cur === id ? null : id));
   const reduced = useReducedMotion() ?? false;
 
+  // On narrow screens the marker-anchored inspector card runs off the edge, so
+  // below this width we dock it to the bottom of the map instead.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const sync = () => {
+      setCompact(mq.matches);
+      // the phone map is display-only, so never leave a popup open on it
+      if (mq.matches) setOpenId(null);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const phones = compact ? PHONES_COMPACT : PHONES;
+  const delays = phoneDelays(phones);
+  // The map is a short strip on phones; shrink the rings so they read as
+  // circles inside the frame rather than clipped arcs.
+  const bRing = compact ? 122 : BROADCAST.ring;
+  const sRing = compact ? 78 : SAFE.ring;
+  // On phones only the fire sits with the broadcast; the shelter gets its own
+  // corner, lower and pulled off the right edge, well clear of the cluster.
+  const safeX = compact ? 83 : SAFE.x;
+  const safeY = compact ? 74 : SAFE.y;
+
   return (
-    <div className="pointer-events-none relative h-[440px] w-full self-start sm:h-[500px] lg:h-[600px]">
+    <div className="pointer-events-none relative h-[168px] w-full sm:h-[460px] lg:h-[600px] lg:self-start">
       {/* radii */}
-      <RadiusRing x={BROADCAST.x} y={BROADCAST.y} size={BROADCAST.ring} color="#d92d20" />
-      <BroadcastWave reduced={reduced} />
-      <RadiusRing x={SAFE.x} y={SAFE.y} size={SAFE.ring} color="#16b364" />
+      <RadiusRing x={BROADCAST.x} y={BROADCAST.y} size={bRing} color="#d92d20" />
+      <BroadcastWave reduced={reduced} size={bRing} />
+      <RadiusRing x={safeX} y={safeY} size={sRing} color="#16b364" />
 
       {/* phones in the broadcast radius, lighting up as the alert reaches them */}
-      {PHONES.map((p, i) => (
+      {phones.map((p, i) => (
         <AnimatedPhone
           key={i}
           x={p.x}
           y={p.y}
-          delay={phoneDelays[i]}
+          delay={delays[i]}
           reduced={reduced}
         />
       ))}
 
-      {/* broadcast marker */}
-      <MarkerButton
-        x={BROADCAST.x}
-        y={BROADCAST.y}
-        active={openId === BROADCAST.id}
-        onClick={() => toggle(BROADCAST.id)}
-        label="Broadcast details"
-      >
-        <motion.span
-          className="block"
-          animate={reduced ? undefined : { scale: [1, 1.14, 1] }}
-          transition={{
-            duration: WAVE_PERIOD,
-            times: [0, 0.12, 0.5],
-            repeat: Infinity,
-            ease: "easeOut",
-          }}
-        >
-          <Icon
-            name="campaign"
-            size={26}
-            filled
-            color="#d92d20"
-            style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
-          />
-        </motion.span>
-      </MarkerButton>
+      {compact ? (
+        /*
+          Phones get a stripped-down, display-only map: fewer markers and
+          nothing tappable, so it reads as an illustration, not a widget.
+        */
+        <>
+          <StaticMarker x={BROADCAST.x} y={BROADCAST.y}>
+            <BroadcastIcon reduced={reduced} size={22} />
+          </StaticMarker>
+          <StaticMarker x={FIRES[0].x} y={FIRES[0].y}>
+            <Icon
+              name="local_fire_department"
+              size={22}
+              filled
+              color={levelColor[FIRES[0].severity]}
+              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+            />
+          </StaticMarker>
+          <StaticMarker x={safeX} y={safeY}>
+            <Icon
+              name="health_and_safety"
+              size={22}
+              filled
+              color="#16b364"
+              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+            />
+          </StaticMarker>
+        </>
+      ) : (
+        <>
+          {/* broadcast marker */}
+          <MarkerButton
+            x={BROADCAST.x}
+            y={BROADCAST.y}
+            active={openId === BROADCAST.id}
+            onClick={() => toggle(BROADCAST.id)}
+            label="Broadcast details"
+          >
+            <BroadcastIcon reduced={reduced} />
+          </MarkerButton>
 
-      {/* at-risk sensor */}
-      <SensorPin />
+          {/* at-risk sensor */}
+          <SensorPin />
 
-      {/* fires, tinted by severity */}
-      {FIRES.map((f) => (
-        <MarkerButton
-          key={f.id}
-          x={f.x}
-          y={f.y}
-          active={openId === f.id}
-          onClick={() => toggle(f.id)}
-          label={`${f.title} details`}
-        >
-          <Icon
-            name="local_fire_department"
-            size={28}
-            filled
-            color={levelColor[f.severity]}
-            style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
-          />
-        </MarkerButton>
-      ))}
+          {/* fires, tinted by severity */}
+          {FIRES.map((f) => (
+            <MarkerButton
+              key={f.id}
+              x={f.x}
+              y={f.y}
+              active={openId === f.id}
+              onClick={() => toggle(f.id)}
+              label={`${f.title} details`}
+            >
+              <Icon
+                name="local_fire_department"
+                size={28}
+                filled
+                color={levelColor[f.severity]}
+                style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+              />
+            </MarkerButton>
+          ))}
 
-      {/* safe zone */}
-      <MarkerButton
-        x={SAFE.x}
-        y={SAFE.y}
-        active={openId === SAFE.id}
-        onClick={() => toggle(SAFE.id)}
-        label="Safe zone details"
-      >
-        <Icon
-          name="health_and_safety"
-          size={28}
-          filled
-          color="#16b364"
-          style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
-        />
-      </MarkerButton>
+          {/* safe zone */}
+          <MarkerButton
+            x={SAFE.x}
+            y={SAFE.y}
+            active={openId === SAFE.id}
+            onClick={() => toggle(SAFE.id)}
+            label="Safe zone details"
+          >
+            <Icon
+              name="health_and_safety"
+              size={28}
+              filled
+              color="#16b364"
+              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+            />
+          </MarkerButton>
+        </>
+      )}
 
-      {/* inspector popup, anchored to the open marker */}
+      {/*
+        Inspector popup, anchored to the open marker. Kept mounted (outside the
+        compact branch) so switching layouts never unmounts it mid-animation.
+      */}
       <AnimatePresence>
-        {open ? (
+        {!compact && open ? (
           <InspectorCard
             key={open.id}
             entity={open}
@@ -257,6 +304,54 @@ export function HeroMap() {
         ) : null}
       </AnimatePresence>
     </div>
+  );
+}
+
+function StaticMarker({
+  x,
+  y,
+  children,
+}: {
+  x: number;
+  y: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="pointer-events-none absolute z-10 grid -translate-x-1/2 -translate-y-1/2 place-content-center"
+      style={{ left: `${x}%`, top: `${y}%` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function BroadcastIcon({
+  reduced,
+  size = 26,
+}: {
+  reduced: boolean;
+  size?: number;
+}) {
+  return (
+    <motion.span
+      className="block"
+      animate={reduced ? undefined : { scale: [1, 1.14, 1] }}
+      transition={{
+        duration: WAVE_PERIOD,
+        times: [0, 0.12, 0.5],
+        repeat: Infinity,
+        ease: "easeOut",
+      }}
+    >
+      <Icon
+        name="campaign"
+        size={size}
+        filled
+        color="#d92d20"
+        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+      />
+    </motion.span>
   );
 }
 
@@ -289,8 +384,13 @@ function RadiusRing({
   );
 }
 
-function BroadcastWave({ reduced }: { reduced: boolean }) {
-  const size = BROADCAST.ring;
+function BroadcastWave({
+  reduced,
+  size = BROADCAST.ring,
+}: {
+  reduced: boolean;
+  size?: number;
+}) {
   if (reduced) {
     return (
       <span
@@ -478,7 +578,9 @@ function InspectorCard({
         ? "URGENT"
         : entity.status.toUpperCase();
 
-  // Anchor the card next to its marker and keep it inside the frame.
+  // Anchor the card next to its marker and keep it inside the frame. The
+  // interactive map only renders above the phone breakpoint, so there is always
+  // room for the marker-anchored placement.
   const below = entity.y < 45;
   const toLeft = entity.x > 55;
   const tx = toLeft ? "calc(-100% - 14px)" : "14px";
@@ -487,7 +589,11 @@ function InspectorCard({
   return (
     <div
       className="pointer-events-none absolute z-30"
-      style={{ left: `${entity.x}%`, top: `${entity.y}%`, transform: `translate(${tx}, ${ty})` }}
+      style={{
+        left: `${entity.x}%`,
+        top: `${entity.y}%`,
+        transform: `translate(${tx}, ${ty})`,
+      }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: below ? -8 : 8 }}

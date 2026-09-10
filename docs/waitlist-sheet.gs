@@ -13,9 +13,10 @@
  * 2. In the sheet: Extensions -> Apps Script. Delete the default code and
  *    paste this whole file.
  *
- * 3. Set SECRET below to a long random string (e.g. `openssl rand -base64 24`).
- *    Use the SAME value for the WAITLIST_SHEET_SECRET env var in Vercel and
- *    in .env.local.
+ * 3. On the `var SECRET =` line below, replace ONLY the text between the quotes
+ *    with a long random string (e.g. `openssl rand -base64 24`). Do not touch
+ *    anything else. Use the SAME value for the WAITLIST_SHEET_SECRET env var in
+ *    Vercel and in .env.local.
  *
  * 4. Deploy -> New deployment -> select type "Web app".
  *      Description:      resqd waitlist
@@ -42,7 +43,10 @@ function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
 
-    if (!SECRET || SECRET === 'REPLACE_WITH_A_LONG_RANDOM_STRING' || body.secret !== SECRET) {
+    // Reject if the secret is unset/too short, or does not match the request.
+    // (Length check, not an equality check against the placeholder, so a
+    // find/replace of the placeholder can't accidentally disable this guard.)
+    if (!SECRET || SECRET.length < 16 || body.secret !== SECRET) {
       return json({ ok: false, error: 'unauthorized' });
     }
 
