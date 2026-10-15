@@ -1,7 +1,6 @@
-import type { Metadata } from "next";
-import { Inter, Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Archivo, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-import { Preloader } from "@/components/Preloader";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -9,17 +8,21 @@ const inter = Inter({
   display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+// Display face: Archivo, a grotesque with a squarer, more industrial build than
+// Inter, giving headings an authoritative, dispatch-console voice.
+const archivo = Archivo({
+  variable: "--font-display-face",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700"], // only the weights the headings use
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+// Operational mono: Roboto Mono, the same control-room readout face Watch Duty
+// uses, for timestamps, coordinates, and status chrome.
+const robotoMono = Roboto_Mono({
+  variable: "--font-mono-face",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400"], // readouts are regular weight only
   display: "swap",
 });
 
@@ -27,6 +30,14 @@ const siteUrl = "https://resqd.vercel.app";
 const title = "ResQd: wildfire response that keeps up with the fire";
 const description =
   "ResQd pulls field sensors, citizen reports, and evacuation routing onto one live map so dispatchers can move people before the fire reaches the road.";
+
+// Draw edge to edge on notched phones (the mobile action bar pads itself with
+// the safe-area inset) and tint the browser chrome to match the page.
+export const viewport: Viewport = {
+  themeColor: "#0a0a0b",
+  colorScheme: "dark",
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -52,26 +63,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${archivo.variable} ${robotoMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-text">
-        <Preloader />
         <div aria-hidden className="page-aura" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        {/*
-          App Router root layout is the correct place for this link, and `block`
-          is deliberate for an icon font (avoids a flash of raw ligature text).
-        */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
-        />
         {children}
       </body>
     </html>

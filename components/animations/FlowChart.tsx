@@ -1,125 +1,125 @@
 "use client";
 
-import { Fragment } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { Icon } from "@/components/ui/Icon";
+import { useRef } from "react";
+import { motion, useInView, useReducedMotion } from "motion/react";
+import { howItWorks } from "@/lib/content";
 
-const STEPS = [
-  {
-    icon: "sensors",
-    title: "A fire is detected",
-    body: "Field sensors and citizen photo reports flag it early.",
-  },
-  {
-    icon: "map",
-    title: "It hits the live map",
-    body: "The signal lands on the dispatcher's map as an incident.",
-  },
-  {
-    icon: "verified_user",
-    title: "A responder verifies",
-    body: "Confirmed reports become tracked incidents in real time.",
-  },
-  {
-    icon: "campaign",
-    title: "The zone is alerted",
-    body: "An evacuation broadcast reaches every phone in the radius.",
-  },
-  {
-    icon: "route",
-    title: "People get a way out",
-    body: "Routing returns the safest path around the fire, not the shortest.",
-  },
+/*
+  The real pipeline, as one line with seven stops. A single pulse travels the
+  line at constant speed; each stop lights exactly when the pulse reaches it.
+  Horizontal from lg, vertical below. Plays only while on screen.
+*/
+
+const STOPS = howItWorks.steps;
+const GROUPS = [
+  { label: "Ingest", from: 0, to: 2 },
+  { label: "Process", from: 2, to: 4 },
+  { label: "Serve", from: 4, to: 7 },
 ];
 
-const WAVE = 1.8; // seconds for the pulse to travel one step
+const TRAVEL = 4.2; // seconds for the pulse to cross all stops
+const REST = 1.4; // pause before the next reading goes through
 
 export function FlowChart() {
-  const reduced = useReducedMotion();
-  const cycle = WAVE * STEPS.length;
+  const reduced = useReducedMotion() ?? false;
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.3 });
+  const live = inView && !reduced;
+  const n = STOPS.length;
+  // Stops are evenly spaced (equal columns on desktop, 96px rows on mobile),
+  // so stop i sits at i / (n - 1) of the line.
+  const reach = (i: number) => (i / (n - 1)) * TRAVEL;
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-      {STEPS.map((step, i) => (
-        <Fragment key={step.title}>
-          {i > 0 ? (
-            <motion.div
-              className="mx-auto shrink-0 self-center lg:mx-0"
-              animate={
-                reduced
-                  ? undefined
-                  : { opacity: [0.35, 1, 0.35], scale: [1, 1.25, 1] }
-              }
-              transition={
-                reduced
-                  ? undefined
-                  : {
-                      duration: 1.1,
-                      repeat: Infinity,
-                      repeatDelay: cycle - 1.1,
-                      delay: (i - 0.5) * WAVE,
-                      ease: "easeInOut",
-                    }
-              }
-            >
-              <Icon
-                name="chevron_right"
-                size={22}
-                className="rotate-90 text-urgent/70 lg:rotate-0"
-              />
-            </motion.div>
-          ) : null}
-
-          <motion.div
-            initial={reduced ? undefined : { opacity: 0, y: 18 }}
-            whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{
-              duration: 0.5,
-              delay: i * 0.08,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="flex flex-1 flex-col gap-4 rounded-2xl border border-border bg-surface/50 p-6 sm:p-7"
+    <div ref={ref}>
+      {/* group labels, desktop */}
+      <div className="hidden grid-cols-7 lg:grid">
+        {GROUPS.map((g) => (
+          <p
+            key={g.label}
+            className="pb-4 text-[13px] font-medium text-muted"
+            style={{ gridColumn: `${g.from + 1} / ${g.to + 1}` }}
           >
-            <motion.div
-              className="flex h-14 w-14 items-center justify-center rounded-xl bg-urgent/10 text-urgent"
-              animate={
-                reduced
-                  ? undefined
-                  : {
-                      boxShadow: [
-                        "0 0 0 0 rgba(217,45,32,0)",
-                        "0 0 18px 2px rgba(217,45,32,0.55)",
-                        "0 0 0 0 rgba(217,45,32,0)",
-                      ],
-                    }
-              }
-              transition={
-                reduced
-                  ? undefined
-                  : {
-                      duration: 1.2,
-                      repeat: Infinity,
-                      repeatDelay: cycle - 1.2,
-                      delay: i * WAVE,
-                      ease: "easeInOut",
-                    }
-              }
+            {g.label}
+          </p>
+        ))}
+      </div>
+
+      <ol className="relative grid gap-0 lg:grid-cols-7">
+        {/* the line: vertical on mobile, horizontal on desktop */}
+        <span
+          aria-hidden
+          className="absolute bottom-[84px] left-[7px] top-[11px] w-px bg-border lg:bottom-auto lg:left-[7px] lg:right-[calc(100%/7-7px)] lg:top-[7px] lg:h-px lg:w-auto"
+        />
+        {live ? (
+          <>
+            <motion.span
+              aria-hidden
+              className="absolute hidden h-[7px] w-[7px] rounded-full bg-urgent shadow-[0_0_0_4px_rgba(217,45,32,0.25)] lg:block"
+              style={{ top: 4 }}
+              initial={{ left: "0%" }}
+              animate={{ left: `calc(${((n - 1) / n) * 100}% + 4px)` }}
+              transition={{
+                duration: TRAVEL,
+                ease: "linear",
+                repeat: Infinity,
+                repeatDelay: REST,
+              }}
+            />
+            <motion.span
+              aria-hidden
+              className="absolute left-[4px] h-[7px] w-[7px] rounded-full bg-urgent shadow-[0_0_0_4px_rgba(217,45,32,0.25)] lg:hidden"
+              initial={{ top: 8 }}
+              animate={{ top: "calc(100% - 88px)" }}
+              transition={{
+                duration: TRAVEL,
+                ease: "linear",
+                repeat: Infinity,
+                repeatDelay: REST,
+              }}
+            />
+          </>
+        ) : null}
+
+        {STOPS.map((s, i) => (
+          <li
+            key={s.label}
+            className="relative h-24 pl-8 lg:h-auto lg:pl-0 lg:pr-5 lg:pt-8"
+          >
+            <span
+              aria-hidden
+              className="absolute left-0 top-1 grid h-[15px] w-[15px] place-content-center rounded-full border border-line-strong bg-bg lg:top-0"
             >
-              <Icon name={step.icon} size={26} filled />
-            </motion.div>
-            <div>
-              <p className="readout text-[10px] text-muted/50">Step {i + 1}</p>
-              <h3 className="mt-1 font-display text-lg font-bold leading-tight text-text sm:text-xl">
-                {step.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {step.body}
-              </p>
-            </div>
-          </motion.div>
-        </Fragment>
-      ))}
+              <motion.span
+                className="h-[7px] w-[7px] rounded-full bg-urgent"
+                initial={{ opacity: reduced ? 1 : 0.15 }}
+                animate={
+                  live
+                    ? { opacity: [0.15, 1, 1, 0.15], scale: [1, 1.4, 1, 1] }
+                    : { opacity: 1 }
+                }
+                transition={
+                  live
+                    ? {
+                        duration: 1.2,
+                        times: [0, 0.1, 0.5, 1],
+                        delay: reach(i),
+                        repeat: Infinity,
+                        repeatDelay: TRAVEL + REST - 1.2,
+                      }
+                    : undefined
+                }
+              />
+            </span>
+            <p className="font-display text-[15px] font-bold leading-snug text-text lg:min-h-[2.75em]">
+              {s.label}
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+              {s.note}
+            </p>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

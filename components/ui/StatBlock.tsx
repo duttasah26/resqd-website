@@ -12,12 +12,12 @@ export function StatBlock({ value, unit, label, source }: StatBlockProps) {
         <span className="font-display text-5xl font-bold text-text sm:text-6xl">
           {value}
         </span>
-        <span className="font-mono text-sm uppercase tracking-widest text-urgent">
+        <span className="font-mono text-sm uppercase tracking-widest text-urgent-text">
           {unit}
         </span>
       </div>
       <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">{label}</p>
-      <p className="mt-3 font-mono text-xs text-muted/60">{source}</p>
+      <p className="mt-3 font-mono text-xs text-muted">{source}</p>
     </div>
   );
 }

@@ -13,7 +13,6 @@ export interface Feature {
   body: string;
   points: string[];
   anim: FeatureAnim;
-  badge?: string;
 }
 
 export const features: Feature[] = [
@@ -22,14 +21,13 @@ export const features: Feature[] = [
     index: "01",
     name: "Sensor network + fire detection",
     headline: "Catch the fire while it's still small.",
-    body: "This layer is still in development. Today it runs on simulated IoT nodes that replay real environmental data; in production these would be physical sensors placed in high fire-probability areas, streaming live temperature, humidity, and air-quality readings. A Random Forest model watches a rolling window of each sensor's last ten readings and flags a fire before it spreads.",
+    body: "Today it runs on simulated IoT nodes that replay real environmental data; in production these would be physical sensors placed in high fire-probability areas, streaming live temperature, humidity, and air-quality readings. A Random Forest model watches a rolling window of each sensor's last ten readings and flags a fire before it spreads.",
     points: [
       "12 raw environmental metrics per reading",
       "60 rolling-window features, 200-tree ensemble vote",
       "Returns fire / no-fire, a confidence score, and a severity band",
     ],
     anim: "sensor-detect",
-    badge: "Work in progress",
   },
   {
     id: "map",

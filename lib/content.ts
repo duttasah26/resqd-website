@@ -7,20 +7,20 @@ export const site = {
   name: "ResQd",
   tagline: "Cloud-native wildfire response.",
   hero: {
-    kicker: "Wildfire situational awareness",
     headline: "Wildfire response that keeps up with the fire.",
     sub: "ResQd is a wildfire emergency-response platform. It pulls field sensors, citizen reports, and evacuation routing onto one live map, so dispatchers see the fire early and move people before it reaches the road.",
     primaryCta: { label: "Join the waitlist", href: "#waitlist" },
     secondaryCta: { label: "See how it works", href: "#how-it-works" },
-    scrollCue: "Scroll to explore",
   },
 } as const;
 
 export const nav = {
+  // In page order.
   links: [
-    { label: "The problem", href: "#problem" },
-    { label: "Platform", href: "#platform" },
     { label: "How it works", href: "#how-it-works" },
+    { label: "Problem", href: "#problem" },
+    { label: "Platform", href: "#platform" },
+    { label: "Architecture", href: "#architecture" },
     { label: "Use cases", href: "#in-action" },
     { label: "Dashboard", href: "#dashboard" },
   ],
@@ -55,8 +55,51 @@ export const problem = {
 } as const;
 
 export const platform = {
-  heading: "One map for the sensors, the reports, and the people.",
+  heading: "One map for sensors, reports, and people.",
   sub: "Five parts of the same system. Each one feeds the live picture dispatchers work from.",
+} as const;
+
+export const productStory = {
+  heading: "From first spark to a safe way out.",
+  sub: "Follow one incident from the first spark to a safe exit. The dispatcher sees it on the live map while residents see it in the app.",
+  steps: [
+    {
+      time: "00:00",
+      key: "detect",
+      title: "A fire is detected",
+      desc: "A field sensor's heat and smoke readings spike, and the Random Forest model flags a fire at 89% confidence. Residents can also report one with a photo from the app.",
+    },
+    {
+      time: "00:04",
+      key: "report",
+      title: "The report hits the map",
+      desc: "The photo uploads straight to S3 and the report drops onto the dispatcher's live map as a pending review.",
+    },
+    {
+      time: "00:11",
+      key: "verify",
+      title: "A responder verifies it",
+      desc: "Dispatch reviews the report and converts it into a tracked incident with a severity band.",
+    },
+    {
+      time: "00:19",
+      key: "broadcast",
+      title: "An evacuation zone goes out",
+      desc: "The dispatcher draws a broadcast radius, sets the priority, and sends an urgent evacuation order.",
+    },
+    {
+      time: "00:20",
+      key: "alert",
+      title: "Phones in the radius alert",
+      desc: "Every device inside the zone picks up the warning on its next 15-second poll.",
+    },
+    {
+      time: "00:27",
+      key: "route",
+      title: "The safest way out",
+      desc: "The app routes each person to the nearest safe zone, scored from 0 to 100 to stay clear of the active fire.",
+    },
+  ],
 } as const;
 
 export const howItWorks = {
@@ -71,8 +114,6 @@ export const howItWorks = {
     { label: "MongoDB Atlas + S3", note: "Incidents and reports; photos in S3" },
     { label: "Dashboard + mobile app", note: "Responders and civilians, same source of truth" },
   ],
-  diagramNote:
-    "Proposed cloud architecture. This will change as the project progresses.",
 } as const;
 
 export const useCases = {
@@ -108,7 +149,7 @@ export const gallery = {
 
 export const waitlist = {
   heading: "Get early access.",
-  body: "We're working with a small number of departments to shape ResQd in the field. Join the waitlist to be first in line for pilot access and product updates.",
+  body: "Join the waitlist to be first in line for pilot access and product updates.",
   roles: [
     "Fire service / first responder",
     "Emergency management",
@@ -116,6 +157,9 @@ export const waitlist = {
     "Researcher",
     "Other",
   ],
+  // The one place the site states its stage, right where people decide.
+  status:
+    "ResQd is in development and not yet operational. The sensor network runs on simulated data today.",
   successTitle: "You're on the list.",
   successBody: "We'll be in touch as pilot spots open up.",
 } as const;
