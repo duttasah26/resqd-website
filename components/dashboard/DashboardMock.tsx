@@ -272,7 +272,12 @@ export function DashboardMock() {
               ))}
             </div>
 
-            <div className="mt-2 overflow-x-auto">
+            <div
+              className="mt-2 overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="Incident table, scrolls sideways"
+            >
               <table className="w-full min-w-[560px] text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">

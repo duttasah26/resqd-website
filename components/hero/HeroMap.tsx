@@ -305,7 +305,7 @@ export function HeroMap() {
             {...markerProps(SENSOR.id)}
           >
             <span
-              className={`grid h-7 w-7 place-content-center rounded-full bg-urgent/15 ${still ? "" : "sensor-glow"}`}
+              className={`grid h-7 w-7 place-content-center rounded-full bg-urgent/15 ring-1 ring-urgent/70`}
             >
               <Icon name="sensors" size={16} filled color="#ff5a4d" />
             </span>

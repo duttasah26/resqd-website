@@ -29,31 +29,37 @@ export function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Which section is on screen: the one crossing a line 35% down the viewport.
+  // Which section is on screen: the last one whose top has reached a line 70%
+  // down the viewport, as long as its bottom is still below that line. Read
+  // from layout on scroll, so tall pinned sections (Platform) stay marked for
+  // their whole length.
   useEffect(() => {
-    const els = SECTION_IDS.map((id) => document.getElementById(id)).filter(
-      (el): el is HTMLElement => el !== null,
-    );
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) if (e.isIntersecting) setCurrent(e.target.id);
-      },
-      { rootMargin: "-35% 0px -64% 0px" },
-    );
-    els.forEach((el) => io.observe(el));
-
-    // Back at the top, no section is current.
-    const hero = document.getElementById("hero");
-    const heroIo = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) setCurrent(null);
-      },
-      { rootMargin: "-40% 0px 0px 0px" },
-    );
-    if (hero) heroIo.observe(hero);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.7;
+      let next: string | null = null;
+      for (const id of [...SECTION_IDS, "waitlist"]) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        // a section counts once its heading (the first content) is on screen
+        const head = el.firstElementChild ?? el;
+        if (head.getBoundingClientRect().top <= line) {
+          next = id === "waitlist" ? null : id;
+        }
+      }
+      setCurrent((cur) => (cur === next ? cur : next));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    frame = requestAnimationFrame(update);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
-      io.disconnect();
-      heroIo.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
@@ -82,7 +88,7 @@ export function Nav() {
     >
       <nav
         aria-label="Sections"
-        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6"
+        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]"
       >
         <a
           href="#hero"
@@ -125,7 +131,7 @@ export function Nav() {
           })}
         </ul>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 lg:justify-self-end">
           <a
             href={nav.cta.href}
             className="btn btn-primary btn-sm hidden sm:inline-flex"

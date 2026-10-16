@@ -60,12 +60,12 @@ export function LiveMap() {
           animate={
             reduced
               ? { scale: 1, opacity: 1 }
-              : { scale: [0, 1, 1, 1], opacity: [0, 1, 1, 0] }
+              : { scale: [0, 1, 1, 1], opacity: [0, 1, 1, 1] }
           }
           transition={
             reduced
               ? undefined
-              : { duration: D, repeat: Infinity, times: [0, 0.08, 0.9, 1] }
+              : { duration: D, repeat: 0, times: [0, 0.08, 0.9, 1] }
           }
           style={{ transformOrigin: `${PINS[0].x}px ${PINS[0].y}px` }}
         />
@@ -83,14 +83,14 @@ export function LiveMap() {
           animate={
             reduced
               ? { opacity: 1, scale: 1 }
-              : { opacity: [0, 1, 1, 1, 0], scale: [0.4, 1.18, 1, 1, 0.9] }
+              : { opacity: [0, 1, 1, 1, 1], scale: [0.4, 1.18, 1, 1, 1] }
           }
           transition={
             reduced
               ? undefined
               : {
                   duration: D,
-                  repeat: Infinity,
+                  repeat: 0,
                   delay: p.delay,
                   times: [0, 0.04, 0.08, 0.92, 1],
                   ease: "easeOut",

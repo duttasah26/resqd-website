@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   motion,
-  useInView,
-  useMotionValue,
+  useMotionValueEvent,
+  useScroll,
+  type MotionValue,
   useReducedMotion,
   useTransform,
 } from "motion/react";
@@ -19,9 +20,9 @@ import { PALETTE } from "@/lib/palette";
   phone on the left, the dispatcher console on the right. They never overlap,
   because the point is that it is the same event in both places.
 
-  A media-style scrubber drives it. Each segment fills over that step's real
-  dwell time, any segment can be selected, and the story can be paused. It only
-  plays while on screen, and under reduced motion it starts paused.
+  Scroll drives it: the console is pinned while the page moves through the
+  steps, each segment fills with scroll progress, and any segment can be
+  selected to jump there.
 
   Map geometry is computed in real pixels from the measured stage, so rings and
   route lines never stretch, and the alert wave reaches each phone exactly when
@@ -125,63 +126,69 @@ const URGENT = PALETTE.urgent;
 const HIGH = PALETTE.high;
 const SAFE_C = PALETTE.safe;
 
+/* Each segment's fill is derived straight from scroll progress, so it is
+   always right however the reader arrives, jumps or scrolls back. */
+function SegFill({
+  i,
+  n,
+  p,
+}: {
+  i: number;
+  n: number;
+  p: MotionValue<number>;
+}) {
+  const width = useTransform(p, [i / n, (i + 1) / n], ["0%", "100%"], {
+    clamp: true,
+  });
+  return (
+    <motion.span
+      className="absolute inset-y-0 left-0 block bg-urgent"
+      style={{ width }}
+    />
+  );
+}
+
 export function ProductStory() {
   const reduced = useReducedMotion() ?? false;
   const rootRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(rootRef, { amount: 0.35 });
-
   const [step, setStep] = useState(0);
-  const [pausedByUser, setPausedByUser] = useState<boolean | null>(null);
-  const paused = pausedByUser ?? reduced;
-  const playing = !paused && inView;
 
-  const progress = useMotionValue(0);
-  const fill = useTransform(progress, (v) => `${v * 100}%`);
-  const elapsed = useRef(0);
+  // The story is driven by scroll: the console stays pinned while the page
+  // moves through the steps, so the reader sets the pace.
+  const { scrollYProgress } = useScroll({
+    target: rootRef,
+    offset: ["start 64px", "end end"],
+  });
 
-  useEffect(() => {
-    if (!playing) return;
-    const dwell = DWELL[STEPS[step].key];
-    const start = performance.now() - elapsed.current;
-    let raf = 0;
-    const tick = (now: number) => {
-      const e = now - start;
-      if (e >= dwell) {
-        elapsed.current = 0;
-        progress.set(0);
-        setStep((s) => (s + 1) % STEPS.length);
-        return;
-      }
-      elapsed.current = e;
-      progress.set(e / dwell);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [playing, step, progress]);
+  useMotionValueEvent(scrollYProgress, "change", (p) => {
+    const x = Math.min(Math.max(p, 0), 0.9999) * STEPS.length;
+    const s = Math.floor(x);
+    setStep((cur) => (cur === s ? cur : s));
+  });
 
   const goTo = (i: number) => {
-    elapsed.current = 0;
-    progress.set(0);
-    setStep(i);
+    const el = rootRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 64;
+    const span = el.offsetHeight - window.innerHeight + 64;
+    window.scrollTo({
+      top: top + span * ((i + 0.5) / STEPS.length),
+      behavior: reduced ? "auto" : "smooth",
+    });
   };
 
   const active = STEPS[step];
 
   return (
-    <div ref={rootRef}>
+    <div
+      ref={rootRef}
+      style={{ height: `calc(${STEPS.length * 30}vh + 520px)` }}
+    >
+     <div className="sticky top-16 flex h-[calc(100svh-4rem)] flex-col justify-center">
       <Console step={step} animate={!reduced} />
 
       {/* scrubber */}
       <div className="mt-6 flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => setPausedByUser(!paused)}
-          aria-label={paused ? "Play the story" : "Pause the story"}
-          className="grid h-11 w-11 shrink-0 place-content-center rounded border border-line-strong text-text transition-colors hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text"
-        >
-          <Icon name={paused ? "play" : "pause"} size={18} filled />
-        </button>
 
         <ol className="grid flex-1 grid-cols-6 gap-1.5 sm:gap-2">
           {STEPS.map((s, i) => {
@@ -197,12 +204,7 @@ export function ProductStory() {
                 >
                   {/* every track is the same; only the fill shows progress */}
                   <span className="relative block h-[3px] w-full overflow-hidden rounded-full bg-border transition-colors group-hover:bg-[#3a3a42]">
-                    <motion.span
-                      className="absolute inset-y-0 left-0 block bg-urgent"
-                      style={{
-                        width: i < step ? "100%" : isActive ? fill : "0%",
-                      }}
-                    />
+                    <SegFill i={i} n={STEPS.length} p={scrollYProgress} />
                   </span>
                   <span
                     className={`hidden truncate text-[13px] font-medium leading-none transition-colors lg:block ${
@@ -221,7 +223,7 @@ export function ProductStory() {
       </div>
 
       {/* caption: fixed height so the page never jumps between steps */}
-      <div className="mt-5 min-h-[7rem] sm:min-h-[5.5rem] sm:pl-14">
+      <div className="mt-5 min-h-[7rem] sm:min-h-[5.5rem]">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={active.key}
@@ -239,6 +241,7 @@ export function ProductStory() {
           </motion.div>
         </AnimatePresence>
       </div>
+     </div>
     </div>
   );
 }
@@ -276,7 +279,7 @@ function Console({ step, animate }: { step: number; animate: boolean }) {
   return (
     <figure
       aria-label="Dispatcher console"
-      className="flex h-[500px] flex-col overflow-hidden rounded-lg border border-border bg-surface sm:h-[460px] lg:h-[520px]"
+      className="flex h-[clamp(340px,52vh,520px)] flex-col overflow-hidden rounded-lg border border-border bg-surface"
     >
       <div ref={stageRef} className="relative flex-1" aria-hidden>
         {/*
@@ -288,7 +291,7 @@ function Console({ step, animate }: { step: number; animate: boolean }) {
           style={{
             backgroundImage: "url(/background/map_bg.png)",
             backgroundSize: "max(225%, 480px) auto",
-            backgroundPosition: "100% 55%",
+            backgroundPosition: "100% 20%",
             backgroundColor: "#1f1f1f",
           }}
         />

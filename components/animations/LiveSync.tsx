@@ -62,19 +62,23 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
-export function LiveSync() {
-  const reduced = useReducedMotion() ?? false;
+export function LiveSync({ still = false }: { still?: boolean }) {
+  const reduced = (useReducedMotion() ?? false) || still;
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { amount: 0.4 });
   const [phase, setPhase] = useState<number>(PH.send);
   const shown = reduced ? PH.landed : phase;
 
   useEffect(() => {
-    if (reduced || !inView) return;
-    const id = setTimeout(
-      () => setPhase((p) => (p + 1) % BEATS.length),
-      BEATS[phase],
-    );
+    if (reduced) return;
+    // play once per visit, hold the landed pin, replay when it re-enters view
+    if (!inView) {
+      if (phase === PH.send) return;
+      const id = setTimeout(() => setPhase(PH.send), 0);
+      return () => clearTimeout(id);
+    }
+    if (phase >= PH.landed) return;
+    const id = setTimeout(() => setPhase((p) => p + 1), BEATS[phase]);
     return () => clearTimeout(id);
   }, [phase, inView, reduced]);
 

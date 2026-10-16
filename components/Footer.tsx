@@ -23,7 +23,7 @@ export function Footer() {
           </p>
           <a
             href={`mailto:${footer.email}`}
-            className="mt-4 inline-block text-sm text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
+            className="-ml-1 mt-2 inline-block px-1 py-2 text-sm text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
           >
             {footer.email}
           </a>
@@ -31,14 +31,14 @@ export function Footer() {
 
         <div>
           <p className="text-[13px] font-medium text-text">Sources</p>
-          <ul className="mt-3 space-y-2 text-xs">
+          <ul className="mt-2 space-y-1 text-[13px] leading-snug">
             {references.map((ref) => (
               <li key={ref.href}>
                 <a
                   href={ref.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
+                  className="inline-block py-1.5 text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
                 >
                   {ref.text}
                 </a>

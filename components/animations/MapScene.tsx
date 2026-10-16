@@ -84,9 +84,12 @@ export const pctY = (y: number) => `${(y / MAP_H) * 100}%`;
 export function MapScene({
   children,
   note,
+  always = false,
 }: {
   children: ReactNode;
   note?: string;
+  /** Render children whether or not the scene is on screen (static scenes). */
+  always?: boolean;
 }) {
   // Animations only run while the scene is on screen, and start from their
   // first frame each time it scrolls into view.
@@ -113,7 +116,7 @@ export function MapScene({
           />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-b from-bg/10 via-transparent to-bg/25" />
-        {inView ? children : null}
+        {inView || always ? children : null}
         {MAP_IMG_URL ? (
           <span className="absolute bottom-1 right-2 text-[10px] text-white/60">
             © Mapbox © OpenStreetMap

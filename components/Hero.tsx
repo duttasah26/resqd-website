@@ -45,6 +45,9 @@ export function Hero() {
               {hero.secondaryCta.label}
             </a>
           </div>
+          <p className="mt-4 text-sm text-muted">
+            In development and testing. Sensor data is simulated for now.
+          </p>
         </div>
 
         <div className="order-1 lg:contents">

@@ -19,14 +19,14 @@ const NEAREST = SENSORS.reduce((a, b) =>
   One 6-second sequence:
   0.0-2.0  the fire's heat footprint grows
   2.0      the nearest sensor trips (green to amber) and the reading appears
-  5.4-6.0  everything settles back, and the loop restarts
+  5.4-6.0  holds the detected state until it scrolls out of view
 */
 const D = 6;
 const t = (s: number) => s / D;
 
 export function SensorDetect() {
   const reduced = useReducedMotion();
-  const loop = { duration: D, repeat: Infinity, ease: "easeInOut" as const };
+  const loop = { duration: D, repeat: 0, ease: "easeInOut" as const };
 
   return (
     <MapScene>
@@ -45,7 +45,7 @@ export function SensorDetect() {
           strokeWidth={2.5}
           strokeDasharray="7 5"
           initial={{ r: reduced ? FIRE_R : 8 }}
-          animate={reduced ? undefined : { r: [8, FIRE_R, FIRE_R, 8] }}
+          animate={reduced ? undefined : { r: [8, FIRE_R, FIRE_R, FIRE_R] }}
           transition={
             reduced ? undefined : { ...loop, times: [0, t(2), t(5.4), 1] }
           }
@@ -71,7 +71,7 @@ export function SensorDetect() {
         color={PALETTE.safe}
         size={22}
         initial={{ opacity: reduced ? 0 : 1 }}
-        animate={reduced ? undefined : { opacity: [1, 1, 0, 0, 1] }}
+        animate={reduced ? undefined : { opacity: [1, 1, 0, 0, 0] }}
         transition={
           reduced
             ? undefined
@@ -85,7 +85,7 @@ export function SensorDetect() {
         color={PALETTE.high}
         size={24}
         initial={{ opacity: reduced ? 1 : 0 }}
-        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 0] }}
+        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 1] }}
         transition={
           reduced
             ? undefined
@@ -105,7 +105,7 @@ export function SensorDetect() {
         className="absolute -translate-y-full pb-4"
         style={{ left: pctX(NEAREST.x), top: pctY(NEAREST.y) }}
         initial={{ opacity: reduced ? 1 : 0 }}
-        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 0] }}
+        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 1] }}
         transition={
           reduced
             ? undefined

@@ -21,8 +21,8 @@ const HAZARDS = [
 // Two direct candidates that cut through the hazards, and the one that's kept.
 const REJECTED = ["M815 423 L213 330", "M815 423 Q 500 286 213 330"];
 const SAFE_ROUTE =
-  "M815 423 C 760 545 430 548 330 448 C 268 402 240 360 213 330";
-const SCORE = { x: 470, y: 505 };
+  "M815 423 C 770 300 560 215 400 240 C 310 254 250 290 213 330";
+const SCORE = { x: 500, y: 200 };
 
 /*
   One 6-second sequence, every element on the same clock:
@@ -30,14 +30,14 @@ const SCORE = { x: 470, y: 505 };
   1.2-1.6  they're rejected (fade back)
   1.6-2.9  the safe route draws around the hazards
   2.9      the safety score appears
-  5.4-6.0  everything fades, and the loop restarts from nothing
+  5.4-6.0  holds the finished route until it scrolls out of view
 */
 const D = 6;
 const t = (s: number) => s / D;
 
 export function Routing() {
   const reduced = useReducedMotion();
-  const loop = { duration: D, repeat: Infinity, ease: "easeInOut" as const };
+  const loop = { duration: D, repeat: 0, ease: "easeInOut" as const };
 
   return (
     <MapScene>
@@ -80,7 +80,7 @@ export function Routing() {
                 ? undefined
                 : {
                     pathLength: [0, 0, 1, 1, 1, 1],
-                    opacity: [0, 0.8, 0.8, 0.25, 0.25, 0],
+                    opacity: [0, 0.8, 0.8, 0.25, 0.25, 0.25],
                   }
             }
             transition={
@@ -108,7 +108,7 @@ export function Routing() {
           animate={
             reduced
               ? undefined
-              : { pathLength: [0, 0, 1, 1, 1], opacity: [0, 1, 1, 1, 0] }
+              : { pathLength: [0, 0, 1, 1, 1], opacity: [0, 1, 1, 1, 1] }
           }
           transition={
             reduced
@@ -148,7 +148,7 @@ export function Routing() {
         className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded border border-safe/60 bg-bg/90 px-2 py-1 text-[11px] font-semibold text-safe"
         style={{ left: pctX(SCORE.x), top: pctY(SCORE.y) }}
         initial={{ opacity: reduced ? 1 : 0 }}
-        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 0] }}
+        animate={reduced ? undefined : { opacity: [0, 0, 1, 1, 1] }}
         transition={
           reduced
             ? undefined

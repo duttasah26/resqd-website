@@ -57,12 +57,12 @@ export function Broadcast() {
             stroke={PALETTE.urgent}
             strokeWidth={2.5}
             initial={{ r: 0, opacity: 0 }}
-            animate={{ r: [0, RADIUS, RADIUS], opacity: [0.9, 0.7, 0] }}
+            animate={{ r: [0, RADIUS, RADIUS], opacity: [0.9, 0.7, 0.35] }}
             transition={{
               duration: WAVE + FADE,
               times: [0, WAVE / (WAVE + FADE), 1],
               ease: "linear",
-              repeat: Infinity,
+              repeat: 0,
               repeatDelay: PERIOD - WAVE - FADE,
             }}
           />
@@ -82,7 +82,7 @@ export function Broadcast() {
               transition={{
                 duration: 0.8,
                 delay: p.at,
-                repeat: Infinity,
+                repeat: 0,
                 repeatDelay: PERIOD - 0.8,
                 ease: "easeOut",
               }}
@@ -105,7 +105,7 @@ export function Broadcast() {
               ? {
                   duration: 0.5,
                   delay: p.at,
-                  repeat: Infinity,
+                  repeat: 0,
                   repeatDelay: PERIOD - 0.5,
                   ease: "easeOut",
                 }
@@ -126,7 +126,7 @@ export function Broadcast() {
           !reduced
             ? {
                 duration: 0.5,
-                repeat: Infinity,
+                repeat: 0,
                 repeatDelay: PERIOD - 0.5,
                 ease: "easeOut",
               }
