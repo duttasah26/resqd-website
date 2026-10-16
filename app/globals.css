@@ -11,6 +11,8 @@
   --border: #2a2a30;
   --text: #f5f5f5;
   --muted: #a1a1aa;
+  --urgent-text: #f04438; /* red for small text: 5.27:1 on bg (urgent is 4.10) */
+  --line-strong: #71717a; /* control edges: 3:1+ on every ground */
 
   --urgent: #d92d20; /* primary */
   --high: #f79009;
@@ -29,6 +31,8 @@
   --color-border: var(--border);
   --color-text: var(--text);
   --color-muted: var(--muted);
+  --color-urgent-text: var(--urgent-text);
+  --color-line-strong: var(--line-strong);
   --color-urgent: var(--urgent);
   --color-high: var(--high);
   --color-medium: var(--medium);
@@ -36,12 +40,18 @@
   --color-mark: var(--mark);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-space-grotesk), var(--font-inter), sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-display-face), var(--font-inter), sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, "SFMono-Regular", monospace;
 }
 
-* {
-  border-color: var(--border);
+/*
+  Default border color, inside the base layer so that border-color utilities
+  and the button components can override it. Unlayered, it beat them all.
+*/
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }
 
 html {
@@ -84,15 +94,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Small secondary / label text: the display face, tight and set in caps. */
-.label {
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
 /* Genuinely monospaced readouts (numbers, coordinates, code). */
 .readout {
   font-family: var(--font-mono);
@@ -100,26 +101,89 @@ body {
   letter-spacing: 0.02em;
 }
 
-.material-symbols-outlined {
-  font-family: "Material Symbols Outlined";
-  font-weight: normal;
-  font-style: normal;
+/*
+  Button system
+  Built like the controls on a dispatch console: a solid, squared plate with a
+  firm edge. No glow, no highlight sheen, no lift. State changes are color
+  changes only, so the label never moves under the pointer.
+
+  Contrast (on #0a0a0b, the darkest ground; 14px semibold labels need 4.5:1):
+    primary rest    #fff on #d92d20  4.83:1
+    primary hover   #fff on #c42719  5.75:1
+    primary press   #fff on #b8241a  6.35:1
+    secondary edge  #71717a          4.09:1  (3:1 needed for a control edge)
+
+  Declared in @layer components so Tailwind utilities placed on the same element
+  (e.g. `hidden sm:inline-flex`, `w-full sm:w-auto`) still win.
+*/
+@layer components {
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  padding-inline: 1.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
   white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-feature-settings: "liga";
-  -webkit-font-smoothing: antialiased;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.btn-sm {
+  height: 2.5rem;
+  padding-inline: 1rem;
+}
+.btn-lg {
+  height: 3rem;
+  padding-inline: 1.5rem;
+  font-size: 0.9375rem;
+}
+.btn-block {
+  width: 100%;
 }
 
-/* Warm radial glow used behind the hero and the waitlist */
-.ember-glow {
-  background:
-    radial-gradient(60% 55% at 50% 0%, rgba(217, 45, 32, 0.18), transparent 70%),
-    radial-gradient(40% 40% at 80% 20%, rgba(247, 144, 9, 0.1), transparent 70%);
+/* Primary: the emergency red, used once per view for the main action. */
+.btn-primary {
+  background: var(--urgent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: #c42719;
+}
+.btn-primary:active {
+  background: #b8241a;
+}
+
+/* Secondary: same plate, outlined, for the quieter path. */
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--muted);
+}
+.btn-secondary:active {
+  background: rgba(255, 255, 255, 0.1);
+}
 }
 
 /*
@@ -138,7 +202,13 @@ body {
     radial-gradient(42% 46% at 28% 72%, rgba(22, 179, 100, 0.07), transparent 74%);
   filter: blur(50px) saturate(1.15);
   animation: aura-drift 28s ease-in-out infinite alternate;
-  will-change: transform;
+}
+
+/* Phones: keep the glow, skip the drift (a 50px blur layer is costly there). */
+@media (max-width: 639px) {
+  .page-aura {
+    animation: none;
+  }
 }
 
 @keyframes aura-drift {
@@ -160,36 +230,6 @@ body {
   background-size: 40px 40px;
 }
 
-@keyframes resqd-pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-
-@keyframes resqd-flicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  45% {
-    opacity: 0.72;
-  }
-  70% {
-    opacity: 0.9;
-  }
-}
-
-@keyframes resqd-dash {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
 /* Red glow for the at-risk hero sensor */
 @keyframes sensor-glow {
   0%,
@@ -206,20 +246,6 @@ body {
 }
 .sensor-glow {
   animation: sensor-glow 2s ease-in-out infinite;
-}
-
-@keyframes hero-ring {
-  0% {
-    transform: translate(-50%, -50%) scale(0.55);
-    opacity: 0.7;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-}
-.hero-ring {
-  animation: hero-ring 3s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

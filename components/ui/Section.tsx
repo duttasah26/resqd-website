@@ -16,16 +16,14 @@ export function Section({ id, children, className = "" }: SectionProps) {
 }
 
 interface HeadingProps {
-  kicker?: string;
   title: string;
   sub?: string;
   className?: string;
 }
 
-export function SectionHeading({ kicker, title, sub, className = "" }: HeadingProps) {
+export function SectionHeading({ title, sub, className = "" }: HeadingProps) {
   return (
     <div className={`max-w-4xl ${className}`}>
-      {kicker ? <p className="label mb-5 text-urgent">{kicker}</p> : null}
       <h2 className="font-display text-[2.5rem] font-bold leading-[1.0] tracking-tight text-text sm:text-6xl md:text-[4.5rem]">
         {title}
       </h2>

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { footer, nav, references, site } from "@/lib/content";
+import { footer, references, site } from "@/lib/content";
 
 export function Footer() {
   return (
@@ -23,64 +23,34 @@ export function Footer() {
           </p>
           <a
             href={`mailto:${footer.email}`}
-            className="mt-4 inline-block text-sm text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
+            className="-ml-1 mt-2 inline-block px-1 py-2 text-sm text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
           >
             {footer.email}
           </a>
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-widest text-muted/60">
-              On this page
-            </p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {nav.links.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-muted transition-colors hover:text-text"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-              <li>
+        <div>
+          <p className="text-[13px] font-medium text-text">Sources</p>
+          <ul className="mt-2 space-y-1 text-[13px] leading-snug">
+            {references.map((ref) => (
+              <li key={ref.href}>
                 <a
-                  href="#waitlist"
-                  className="text-muted transition-colors hover:text-text"
+                  href={ref.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block py-1.5 text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
                 >
-                  Join the waitlist
+                  {ref.text}
                 </a>
               </li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-widest text-muted/60">
-              Sources
-            </p>
-            <ul className="mt-3 space-y-2 text-xs">
-              {references.map((ref) => (
-                <li key={ref.href}>
-                  <a
-                    href={ref.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted/70 underline-offset-2 transition-colors hover:text-text hover:underline"
-                  >
-                    {ref.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+            ))}
+          </ul>
         </div>
       </div>
 
       <div className="mx-auto mt-12 w-full max-w-6xl border-t border-border pt-6">
-        <p className="label !tracking-[0.1em] text-muted/50">
-          © {new Date().getFullYear()} {site.name}. Work in progress, not yet
-          operational.
+        <p className="text-[13px] text-muted">
+          © {new Date().getFullYear()} {site.name}
         </p>
       </div>
     </footer>

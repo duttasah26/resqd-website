@@ -2,23 +2,22 @@
 
 import { useState } from "react";
 import CountUp from "react-countup";
-import {
-  Flame,
-  Home,
-  Bell,
-  Radio,
-  Users,
-  Smartphone,
-  UserRound,
-  LogOut,
-  TriangleAlert,
-  ShieldAlert,
-  Activity,
-  BarChart3,
-  CheckCircle2,
-  Clock,
-  RefreshCw,
-} from "lucide-react";
+// Phosphor, like the rest of the site; aliased to the dashboard's own names.
+import { Fire as Flame } from "@phosphor-icons/react/dist/ssr/Fire";
+import { House as Home } from "@phosphor-icons/react/dist/ssr/House";
+import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
+import { Broadcast as Radio } from "@phosphor-icons/react/dist/ssr/Broadcast";
+import { Users } from "@phosphor-icons/react/dist/ssr/Users";
+import { DeviceMobile as Smartphone } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
+import { User as UserRound } from "@phosphor-icons/react/dist/ssr/User";
+import { SignOut as LogOut } from "@phosphor-icons/react/dist/ssr/SignOut";
+import { Warning as TriangleAlert } from "@phosphor-icons/react/dist/ssr/Warning";
+import { ShieldWarning as ShieldAlert } from "@phosphor-icons/react/dist/ssr/ShieldWarning";
+import { Pulse as Activity } from "@phosphor-icons/react/dist/ssr/Pulse";
+import { ChartBar as BarChart3 } from "@phosphor-icons/react/dist/ssr/ChartBar";
+import { CheckCircle as CheckCircle2 } from "@phosphor-icons/react/dist/ssr/CheckCircle";
+import { Clock } from "@phosphor-icons/react/dist/ssr/Clock";
+import { ArrowsClockwise as RefreshCw } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
 
 /*
   A self-contained, light-themed recreation of the ResQd dispatcher "Alerts /
@@ -78,10 +77,10 @@ const TABS: { key: IncidentStatus | "All"; label: string; count?: number }[] = [
 
 const toneText: Record<string, string> = {
   neutral: "text-slate-900",
-  red: "text-[#e84045]",
-  amber: "text-[#f8a340]",
-  green: "text-[#12b76a]",
-  orange: "text-[#f79009]",
+  red: "text-[#c81e1e]",
+  amber: "text-[#b45309]",
+  green: "text-[#047857]",
+  orange: "text-[#c2410c]",
 };
 const toneBorder: Record<string, string> = {
   neutral: "border-slate-200",
@@ -92,9 +91,9 @@ const toneBorder: Record<string, string> = {
 };
 
 const statusPill: Record<IncidentStatus, string> = {
-  Active: "bg-red-50 text-[#e84045] ring-[#e84045]/20",
+  Active: "bg-red-50 text-[#c81e1e] ring-[#e84045]/20",
   Contained: "bg-amber-50 text-[#b45309] ring-amber-500/20",
-  Resolved: "bg-emerald-50 text-[#12b76a] ring-emerald-500/20",
+  Resolved: "bg-emerald-50 text-[#047857] ring-emerald-500/20",
   Cancelled: "bg-slate-100 text-slate-500 ring-slate-400/20",
 };
 const chip = "bg-amber-50 text-[#b45309] ring-amber-500/20";
@@ -109,38 +108,40 @@ export function DashboardMock() {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
       {/* browser chrome */}
-      <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-3.5 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        <div className="mx-auto rounded-md bg-white px-3 py-1 text-[11px] text-slate-400 ring-1 ring-slate-200">
+      <div className="flex items-center border-b border-slate-200 bg-slate-100 px-3.5 py-2.5">
+        <div className="mx-auto rounded-md bg-white px-3 py-1 text-[12px] text-slate-500 ring-1 ring-slate-200">
           app.resqd.ca/alerts
         </div>
       </div>
 
       <div className="flex text-slate-900" style={{ fontFamily: "var(--font-inter, system-ui, sans-serif)" }}>
         {/* rail */}
-        <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-slate-200 bg-white py-4">
-          <div className="mb-3 grid h-9 w-9 place-content-center rounded-lg bg-[#e84045]/10 text-[#e84045]">
+        <nav className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r border-slate-200 bg-white py-4 sm:flex">
+          <div className="mb-3 grid h-9 w-9 place-content-center rounded-lg bg-[#e84045]/10 text-[#c81e1e]">
             <Flame className="h-5 w-5" />
           </div>
-          {[Home, Bell, Radio, Users].map((Ic, i) => (
+          {([[Home, "Home"], [Bell, "Alerts"], [Radio, "Broadcasts"], [Users, "Users"]] as const).map(([Ic, name], i) => (
             <button
+              type="button"
+              aria-label={name}
+              aria-current={i === 1 ? "page" : undefined}
               key={i}
               className={`grid h-9 w-9 place-content-center rounded-lg ${
                 i === 1
-                  ? "bg-[#e84045]/10 text-[#e84045]"
-                  : "text-slate-400 hover:bg-slate-100"
+                  ? "bg-[#e84045]/10 text-[#c81e1e]"
+                  : "text-slate-500 hover:bg-slate-100"
               }`}
             >
               <Ic className="h-[18px] w-[18px]" />
             </button>
           ))}
           <div className="mt-auto flex flex-col items-center gap-1">
-            {[Smartphone, UserRound, LogOut].map((Ic, i) => (
+            {([[Smartphone, "Mobile app"], [UserRound, "Account"], [LogOut, "Sign out"]] as const).map(([Ic, name], i) => (
               <button
+                type="button"
+                aria-label={name}
                 key={i}
-                className="grid h-9 w-9 place-content-center rounded-lg text-slate-300 hover:bg-slate-100"
+                className="grid h-9 w-9 place-content-center rounded-lg text-slate-500 hover:bg-slate-100"
               >
                 <Ic className="h-[18px] w-[18px]" />
               </button>
@@ -152,17 +153,17 @@ export function DashboardMock() {
         <div className="min-w-0 flex-1 p-5 sm:p-6">
           {/* top bar */}
           <div className="flex flex-wrap items-center gap-2.5 text-[11px]">
-            <span className="flex items-center gap-1.5 font-semibold uppercase tracking-wide text-slate-400">
-              <TriangleAlert className="h-3.5 w-3.5 text-[#f79009]" />
-              ResqNet / Alerts
+            <span className="flex items-center gap-1.5 font-semibold uppercase tracking-wide text-slate-500">
+              <TriangleAlert className="h-3.5 w-3.5 text-[#c2410c]" />
+              ResQd / Alerts
             </span>
-            <span className="rounded-md bg-red-50 px-2 py-1 text-[#e84045] ring-1 ring-[#e84045]/20">
+            <span className="rounded-md bg-red-50 px-2 py-1 text-[#c81e1e] ring-1 ring-[#e84045]/20">
               12 incidents · <b>9 active</b>
             </span>
             <span className="rounded-md bg-amber-50 px-2 py-1 text-[#b45309] ring-1 ring-amber-500/20">
               6 broadcasts · <b>2 urgent</b>
             </span>
-            <span className="rounded-md bg-orange-50 px-2 py-1 text-[#f79009] ring-1 ring-[#f79009]/20">
+            <span className="rounded-md bg-orange-50 px-2 py-1 text-[#c2410c] ring-1 ring-[#f79009]/20">
               1 pending reviews
             </span>
             <div className="ml-auto hidden items-center gap-1.5 sm:flex">
@@ -171,7 +172,7 @@ export function DashboardMock() {
                   key={t}
                   className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
                     i === 2
-                      ? "bg-[#f79009] text-white"
+                      ? "bg-[#c2410c] text-white"
                       : "text-slate-500 ring-1 ring-slate-200"
                   }`}
                 >
@@ -193,7 +194,7 @@ export function DashboardMock() {
                 className={`rounded-lg border bg-white p-3.5 ${toneBorder[c.tone]}`}
               >
                 <div className="flex items-start justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                     {c.label}
                   </span>
                   <c.Icon className="h-3.5 w-3.5 text-slate-300" />
@@ -209,7 +210,7 @@ export function DashboardMock() {
                     scrollSpyOnce
                   />
                 </div>
-                <span className="text-[11px] text-slate-400">{c.sub}</span>
+                <span className="text-[11px] text-slate-500">{c.sub}</span>
               </div>
             ))}
           </div>
@@ -224,14 +225,14 @@ export function DashboardMock() {
           <div className="mt-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-[#e84045]" />
+                <ShieldAlert className="h-4 w-4 text-[#c81e1e]" />
                 <div>
                   <p className="text-sm font-semibold leading-tight">
                     Current Incidents
                   </p>
-                  <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
                     {INCIDENTS.length} records
-                    <span className="flex items-center gap-1 text-[#f79009]">
+                    <span className="flex items-center gap-1 text-[#c2410c]">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#f79009]" />
                       LIVE
                     </span>
@@ -265,16 +266,21 @@ export function DashboardMock() {
                 >
                   {t.label}
                   {t.count != null ? (
-                    <span className="ml-1 opacity-60">({t.count})</span>
+                    <span className="ml-1 font-normal">({t.count})</span>
                   ) : null}
                 </button>
               ))}
             </div>
 
-            <div className="mt-2 overflow-x-auto">
+            <div
+              className="mt-2 overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="Incident table, scrolls sideways"
+            >
               <table className="w-full min-w-[560px] text-left text-[12px]">
                 <thead>
-                  <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-400">
+                  <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
                     <th className="py-2 pr-3 font-semibold">Name</th>
                     <th className="py-2 pr-3 font-semibold">Status</th>
                     <th className="py-2 pr-3 font-semibold">Severity</th>
@@ -293,7 +299,7 @@ export function DashboardMock() {
                         <span className="border-l-2 border-[#e84045] pl-2 font-medium">
                           {r.name}
                         </span>
-                        <span className="ml-2 text-[10px] text-slate-400">
+                        <span className="ml-2 text-[10px] text-slate-500">
                           {r.ref}
                         </span>
                       </td>
@@ -329,7 +335,7 @@ export function DashboardMock() {
                   ))}
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-400">
+                      <td colSpan={6} className="py-6 text-center text-slate-500">
                         No incidents in this state.
                       </td>
                     </tr>
@@ -356,7 +362,7 @@ function BarPanel({
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <Icon className="h-4 w-4 text-slate-400" />
+        <Icon className="h-4 w-4 text-slate-500" />
         {title}
       </div>
       <div className="mt-3 space-y-2.5">
@@ -367,9 +373,10 @@ function BarPanel({
               <span className="font-semibold text-slate-700">{r.count}</span>
             </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              {/* scaleX, not width: compositor-only, no layout per frame */}
               <div
-                className="h-full rounded-full transition-[width] duration-700"
-                style={{ width: `${r.pct}%`, backgroundColor: r.color }}
+                className="h-full origin-left rounded-full transition-transform duration-700"
+                style={{ transform: `scaleX(${r.pct / 100})`, backgroundColor: r.color }}
               />
             </div>
           </div>

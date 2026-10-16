@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useInView,
+  useReducedMotion,
+} from "motion/react";
 import { Icon } from "@/components/ui/Icon";
+import { useElementSize } from "@/lib/useElementSize";
+import { PALETTE } from "@/lib/palette";
 
 type Level = "low" | "med" | "high";
 
@@ -50,14 +57,31 @@ interface BroadcastEntity {
   sent: string;
 }
 
-type Entity = FireEntity | SafeEntity | BroadcastEntity;
+interface SensorEntity {
+  kind: "sensor";
+  id: string;
+  x: number;
+  y: number;
+  title: string;
+  subtitle: string;
+  likelihood: number;
+  reading: string;
+  updated: string;
+}
 
+type Entity = FireEntity | SafeEntity | BroadcastEntity | SensorEntity;
+
+/*
+  Positions are % of the map box. They keep every 44px marker at least ~60px
+  from its neighbours on the desktop layout, so nothing overlaps on hover, and
+  they leave the lower left of the box clear for the docked inspector.
+*/
 const FIRES: FireEntity[] = [
   {
     kind: "fire",
     id: "f1",
-    x: 54,
-    y: 12,
+    x: 50,
+    y: 19,
     title: "Structure fire",
     subtitle: "Norseman Inn Rd",
     severity: "high",
@@ -124,186 +148,291 @@ const BROADCAST: BroadcastEntity = {
   sent: "6 min ago",
 };
 
-const SENSOR = { x: 82, y: 22, reading: 82 };
+const SENSOR: SensorEntity = {
+  kind: "sensor",
+  id: "n1",
+  x: 82,
+  y: 22,
+  title: "Sensor 04",
+  subtitle: "Norseman Inn Rd",
+  likelihood: 82,
+  reading: "Heat and smoke rising",
+  updated: "30 s ago",
+};
+
+// Phones inside the broadcast radius.
 const PHONES = [
-  { x: 42, y: 26 },
-  { x: 78, y: 28 },
-  { x: 58, y: 3 },
-  { x: 88, y: 40 },
+  { x: 54.5, y: 4 },
+  { x: 73.4, y: 4 },
+  { x: 46, y: 9.7 },
+  { x: 58.3, y: 27.2 },
 ];
-// On phones: one device, pushed well away from the fire/broadcast cluster at
-// the top of the ring but still inside it, so it reads as its own point.
+// On phones: one device, inside the ring but clear of the cluster.
 const PHONES_COMPACT = [{ x: 72, y: 42 }];
 
-const ALL: Entity[] = [...FIRES, SAFE, BROADCAST];
+const ALL: Entity[] = [...FIRES, SAFE, BROADCAST, SENSOR];
 
 const levelColor: Record<Level, string> = {
-  low: "#16b364",
-  med: "#f79009",
-  high: "#d92d20",
+  low: PALETTE.safe,
+  med: PALETTE.high,
+  high: PALETTE.urgent,
 };
-const levelWord: Record<Level, string> = { low: "LOW", med: "MED", high: "HIGH" };
+const levelWord: Record<Level, string> = {
+  low: "LOW",
+  med: "MED",
+  high: "HIGH",
+};
 
-const WAVE_PERIOD = 3;
-
-// How far each phone sits from the broadcast origin, normalised 0..1, so the
-// alert "reaches" the nearest phone first and the farthest one last.
-function phoneDelays(phones: { x: number; y: number }[]) {
-  const d = phones.map((p) =>
-    Math.hypot(p.x - BROADCAST.x, p.y - BROADCAST.y),
-  );
-  const max = Math.max(...d, 0.001);
-  return d.map((v) => (v / max) * 2);
-}
+// One broadcast wave every PERIOD seconds. It grows at constant speed for WAVE
+// seconds, so a phone at distance d from the origin is reached at d / r * WAVE.
+const PERIOD = 3;
+const WAVE = 1.6;
+const FADE = 0.3;
 
 export function HeroMap() {
   const [openId, setOpenId] = useState<string | null>(null);
-  const open = ALL.find((e) => e.id === openId) ?? null;
-  const toggle = (id: string) =>
-    setOpenId((cur) => (cur === id ? null : id));
+  const shown = ALL.find((e) => e.id === openId) ?? null;
   const reduced = useReducedMotion() ?? false;
+  const [boxRef, { width: W, height: H }] = useElementSize<HTMLDivElement>();
+  // Loops run only while the map is on screen; they restart together (so the
+  // wave and the phone pings stay in phase) when it scrolls back into view.
+  const inView = useInView(boxRef, { amount: 0.1 });
+  const still = reduced || !inView;
 
-  // On narrow screens the marker-anchored inspector card runs off the edge, so
-  // below this width we dock it to the bottom of the map instead.
-  const [compact, setCompact] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const sync = () => {
-      setCompact(mq.matches);
-      // the phone map is display-only, so never leave a popup open on it
-      if (mq.matches) setOpenId(null);
-    };
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
+  // Below the sm breakpoint the map is a short, display-only strip.
+  const compact = useIsPhone();
 
   const phones = compact ? PHONES_COMPACT : PHONES;
-  const delays = phoneDelays(phones);
-  // The map is a short strip on phones; shrink the rings so they read as
-  // circles inside the frame rather than clipped arcs.
   const bRing = compact ? 122 : BROADCAST.ring;
   const sRing = compact ? 78 : SAFE.ring;
-  // On phones only the fire sits with the broadcast; the shelter gets its own
-  // corner, lower and pulled off the right edge, well clear of the cluster.
   const safeX = compact ? 83 : SAFE.x;
   const safeY = compact ? 74 : SAFE.y;
 
-  return (
-    <div className="pointer-events-none relative h-[168px] w-full sm:h-[460px] lg:h-[600px] lg:self-start">
-      {/* radii */}
-      <RadiusRing x={BROADCAST.x} y={BROADCAST.y} size={bRing} color="#d92d20" />
-      <BroadcastWave reduced={reduced} size={bRing} />
-      <RadiusRing x={safeX} y={safeY} size={sRing} color="#16b364" />
+  const delays = phones.map((p) => {
+    const d = Math.hypot(
+      ((p.x - BROADCAST.x) / 100) * W,
+      ((p.y - BROADCAST.y) / 100) * H,
+    );
+    return Math.min(d / (bRing / 2), 1) * WAVE;
+  });
 
-      {/* phones in the broadcast radius, lighting up as the alert reaches them */}
-      {phones.map((p, i) => (
-        <AnimatedPhone
-          key={i}
-          x={p.x}
-          y={p.y}
-          delay={delays[i]}
-          reduced={reduced}
-        />
-      ))}
+  const markerProps = (id: string) => ({
+    active: openId === id,
+    onClick: () => setOpenId((cur) => (cur === id ? null : id)),
+  });
+
+  // Close on Escape or on a click anywhere outside the map's markers and card.
+  useEffect(() => {
+    if (!openId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenId(null);
+    };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t?.closest("[data-map-ui]")) setOpenId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [openId]);
+
+  const place = shown ? placeCard(shown, W, H) : null;
+
+  return (
+    <div
+      ref={boxRef}
+      className="pointer-events-none relative h-[168px] w-full sm:h-[460px] lg:h-[600px] lg:self-start"
+    >
+      <RadiusRing
+        x={BROADCAST.x}
+        y={BROADCAST.y}
+        size={bRing}
+        color={PALETTE.urgent}
+      />
+      <BroadcastWave reduced={still} size={bRing} />
+      <RadiusRing x={safeX} y={safeY} size={sRing} color={PALETTE.safe} />
+
+      {W > 0
+        ? phones.map((p, i) => (
+            <AnimatedPhone
+              key={i}
+              x={p.x}
+              y={p.y}
+              delay={delays[i]}
+              reduced={still}
+            />
+          ))
+        : null}
 
       {compact ? (
-        /*
-          Phones get a stripped-down, display-only map: fewer markers and
-          nothing tappable, so it reads as an illustration, not a widget.
-        */
         <>
           <StaticMarker x={BROADCAST.x} y={BROADCAST.y}>
-            <BroadcastIcon reduced={reduced} size={22} />
+            <BroadcastIcon reduced={still} size={22} />
           </StaticMarker>
           <StaticMarker x={FIRES[0].x} y={FIRES[0].y}>
-            <Icon
+            <MarkerIcon
               name="local_fire_department"
+              color={levelColor.high}
               size={22}
-              filled
-              color={levelColor[FIRES[0].severity]}
-              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
             />
           </StaticMarker>
           <StaticMarker x={safeX} y={safeY}>
-            <Icon
+            <MarkerIcon
               name="health_and_safety"
+              color={PALETTE.safe}
               size={22}
-              filled
-              color="#16b364"
-              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
             />
           </StaticMarker>
         </>
-      ) : (
+      ) : W > 0 ? (
         <>
-          {/* broadcast marker */}
           <MarkerButton
             x={BROADCAST.x}
             y={BROADCAST.y}
-            active={openId === BROADCAST.id}
-            onClick={() => toggle(BROADCAST.id)}
             label="Broadcast details"
+            {...markerProps(BROADCAST.id)}
           >
-            <BroadcastIcon reduced={reduced} />
+            <BroadcastIcon reduced={still} />
           </MarkerButton>
 
-          {/* at-risk sensor */}
-          <SensorPin />
+          <MarkerButton
+            x={SENSOR.x}
+            y={SENSOR.y}
+            label="Sensor details"
+            {...markerProps(SENSOR.id)}
+          >
+            <span
+              className={`grid h-7 w-7 place-content-center rounded-full bg-urgent/15 ring-1 ring-urgent/70`}
+            >
+              <Icon name="sensors" size={16} filled color="#ff5a4d" />
+            </span>
+          </MarkerButton>
 
-          {/* fires, tinted by severity */}
           {FIRES.map((f) => (
             <MarkerButton
               key={f.id}
               x={f.x}
               y={f.y}
-              active={openId === f.id}
-              onClick={() => toggle(f.id)}
               label={`${f.title} details`}
+              {...markerProps(f.id)}
             >
-              <Icon
+              <MarkerIcon
                 name="local_fire_department"
-                size={28}
-                filled
                 color={levelColor[f.severity]}
-                style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
               />
             </MarkerButton>
           ))}
 
-          {/* safe zone */}
           <MarkerButton
             x={SAFE.x}
             y={SAFE.y}
-            active={openId === SAFE.id}
-            onClick={() => toggle(SAFE.id)}
             label="Safe zone details"
+            {...markerProps(SAFE.id)}
           >
-            <Icon
-              name="health_and_safety"
-              size={28}
-              filled
-              color="#16b364"
-              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
-            />
+            <MarkerIcon name="health_and_safety" color={PALETTE.safe} />
           </MarkerButton>
-        </>
-      )}
 
-      {/*
-        Inspector popup, anchored to the open marker. Kept mounted (outside the
-        compact branch) so switching layouts never unmounts it mid-animation.
-      */}
-      <AnimatePresence>
-        {!compact && open ? (
-          <InspectorCard
-            key={open.id}
-            entity={open}
-            onClose={() => setOpenId(null)}
-          />
-        ) : null}
-      </AnimatePresence>
+          {/* inspector, opened by click, placed beside its marker */}
+          <AnimatePresence>
+            {shown && place ? (
+              <motion.div
+                key={shown.id}
+                data-map-ui
+                className="absolute z-30"
+                style={{ left: place.left, top: place.top, width: CARD_W }}
+                initial={{ opacity: 0, x: place.dx * 6, y: place.dy * 6 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <InspectorCard entity={shown} onClose={() => setOpenId(null)} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+const CARD_W = 264;
+const CARD_H = 236;
+const GAP = 10;
+const HIT = 22; // half a marker's 44px hit area
+
+/*
+  Put the card right beside its marker. Try the four sides and pick the one
+  that covers the fewest other markers while staying inside the map box.
+*/
+function placeCard(e: Entity, W: number, H: number) {
+  const mx = (e.x / 100) * W;
+  const my = (e.y / 100) * H;
+  const right = mx + HIT + GAP;
+  const left = mx - HIT - GAP - CARD_W;
+  const options = [
+    { left: right, top: my - HIT, dx: -1, dy: 0 },
+    { left, top: my - HIT, dx: 1, dy: 0 },
+    { left: right, top: my + HIT - CARD_H, dx: -1, dy: 0 },
+    { left, top: my + HIT - CARD_H, dx: 1, dy: 0 },
+    { left: mx - CARD_W / 2, top: my + HIT + GAP, dx: 0, dy: -1 },
+  ];
+  const others = [
+    ...ALL.filter((o) => o.id !== e.id).map((o) => ({ ...o, w: 3 })),
+    ...PHONES.map((p) => ({ ...p, w: 1 })),
+  ].map((o) => ({ x: (o.x / 100) * W, y: (o.y / 100) * H, w: o.w }));
+
+  const score = (o: (typeof options)[number]) => {
+    const covered = others.reduce((sum, m) => {
+      const hit =
+        m.x + HIT > o.left &&
+        m.x - HIT < o.left + CARD_W &&
+        m.y + HIT > o.top &&
+        m.y - HIT < o.top + CARD_H;
+      return sum + (hit ? m.w : 0);
+    }, 0);
+    const spill =
+      Math.max(0, -o.left) +
+      Math.max(0, o.left + CARD_W - W) +
+      Math.max(0, -o.top) +
+      Math.max(0, o.top + CARD_H - H);
+    return covered * 100 + spill;
+  };
+  return options.reduce((best, o) => (score(o) < score(best) ? o : best));
+}
+
+const PHONE_QUERY = "(max-width: 639px)";
+function useIsPhone() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(PHONE_QUERY);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(PHONE_QUERY).matches,
+    () => false,
+  );
+}
+
+function MarkerIcon({
+  name,
+  color,
+  size = 28,
+}: {
+  name: string;
+  color: string;
+  size?: number;
+}) {
+  return (
+    <Icon
+      name={name}
+      size={size}
+      filled
+      color={color}
+      style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
+    />
   );
 }
 
@@ -333,24 +462,19 @@ function BroadcastIcon({
   reduced: boolean;
   size?: number;
 }) {
+  // A small kick each time a wave leaves the tower.
   return (
     <motion.span
-      className="block"
-      animate={reduced ? undefined : { scale: [1, 1.14, 1] }}
+      className="block leading-none"
+      animate={reduced ? undefined : { scale: [1, 1.12, 1] }}
       transition={{
-        duration: WAVE_PERIOD,
-        times: [0, 0.12, 0.5],
+        duration: 0.5,
         repeat: Infinity,
+        repeatDelay: PERIOD - 0.5,
         ease: "easeOut",
       }}
     >
-      <Icon
-        name="campaign"
-        size={size}
-        filled
-        color="#d92d20"
-        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.85))" }}
-      />
+      <MarkerIcon name="campaign" color={PALETTE.urgent} size={size} />
     </motion.span>
   );
 }
@@ -368,15 +492,13 @@ function RadiusRing({
 }) {
   return (
     <span
-      className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border"
+      className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
       style={{
         left: `${x}%`,
         top: `${y}%`,
         width: size,
         height: size,
-        borderColor: color,
-        borderStyle: "dashed",
-        borderWidth: 1.5,
+        border: `1.5px dashed ${color}`,
         backgroundColor: `${color}12`,
         opacity: 0.6,
       }}
@@ -384,56 +506,30 @@ function RadiusRing({
   );
 }
 
-function BroadcastWave({
-  reduced,
-  size = BROADCAST.ring,
-}: {
-  reduced: boolean;
-  size?: number;
-}) {
-  if (reduced) {
-    return (
-      <span
-        className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#d92d20]/60"
-        style={{
-          left: `${BROADCAST.x}%`,
-          top: `${BROADCAST.y}%`,
-          width: size,
-          height: size,
-        }}
-      />
-    );
-  }
-  // Each ring starts as a dot on the icon and grows outward to the dashed
-  // boundary. Width/height animate (not scale) so the stroke stays crisp.
+function BroadcastWave({ reduced, size }: { reduced: boolean; size: number }) {
+  if (reduced) return null;
+  // One ring per period at constant speed, so the phone pings can be timed to it.
   return (
-    <span
-      className="absolute left-0 top-0"
-      style={{ left: `${BROADCAST.x}%`, top: `${BROADCAST.y}%` }}
-    >
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="absolute left-0 top-0 rounded-full border-2 border-[#ff3b2f]"
-          style={{ boxShadow: "0 0 14px 1px rgba(217,45,32,0.45)" }}
-          initial={{ width: 0, height: 0, x: 0, y: 0, opacity: 0 }}
-          animate={{
-            width: [0, size],
-            height: [0, size],
-            x: [0, -size / 2],
-            y: [0, -size / 2],
-            opacity: [0, 0.9, 0.9, 0],
-          }}
-          transition={{
-            duration: WAVE_PERIOD,
-            times: [0, 0.08, 0.6, 1],
-            repeat: Infinity,
-            delay: i * (WAVE_PERIOD / 3),
-            ease: "easeOut",
-          }}
-        />
-      ))}
-    </span>
+    <motion.span
+      className="absolute rounded-full border-2 border-[#ff3b2f]"
+      style={{
+        left: `${BROADCAST.x}%`,
+        top: `${BROADCAST.y}%`,
+        width: size,
+        height: size,
+        x: "-50%",
+        y: "-50%",
+      }}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: [0, 1, 1], opacity: [0.9, 0.7, 0] }}
+      transition={{
+        duration: WAVE + FADE,
+        times: [0, WAVE / (WAVE + FADE), 1],
+        ease: "linear",
+        repeat: Infinity,
+        repeatDelay: PERIOD - WAVE - FADE,
+      }}
+    />
   );
 }
 
@@ -448,6 +544,13 @@ function AnimatedPhone({
   delay: number;
   reduced: boolean;
 }) {
+  const t = {
+    duration: 0.8,
+    delay,
+    repeat: Infinity,
+    repeatDelay: PERIOD - 0.8,
+    ease: "easeOut" as const,
+  };
   return (
     <span
       className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -455,38 +558,23 @@ function AnimatedPhone({
     >
       {!reduced ? (
         <motion.span
-          className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#f79009]"
+          className="absolute left-1/2 top-1/2 h-5 w-5 rounded-full border border-high"
+          style={{ x: "-50%", y: "-50%" }}
           initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: [0.5, 2.6], opacity: [0, 0.6, 0] }}
-          transition={{
-            duration: 1.1,
-            repeatDelay: WAVE_PERIOD - 1.1,
-            repeat: Infinity,
-            delay,
-            ease: "easeOut",
-          }}
+          animate={{ scale: [0.5, 2.4], opacity: [0.8, 0] }}
+          transition={t}
         />
       ) : null}
       <motion.span
-        className="relative block"
-        animate={
-          reduced
-            ? undefined
-            : { scale: [1, 1.3, 1], filter: ["brightness(1)", "brightness(1.7)", "brightness(1)"] }
-        }
-        transition={{
-          duration: 0.9,
-          repeatDelay: WAVE_PERIOD - 0.9,
-          repeat: Infinity,
-          delay,
-          ease: "easeOut",
-        }}
+        className="relative block leading-none"
+        animate={reduced ? undefined : { scale: [1, 1.25, 1] }}
+        transition={t}
       >
         <Icon
           name="smartphone"
           size={15}
           filled
-          color="#f79009"
+          color={PALETTE.high}
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}
         />
       </motion.span>
@@ -513,48 +601,16 @@ function MarkerButton({
     <button
       type="button"
       aria-label={label}
+      aria-pressed={active}
       onClick={onClick}
-      className={`pointer-events-auto absolute z-10 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-content-center rounded-full transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
-        active ? "scale-110 bg-white/10 ring-2 ring-white/40" : ""
+      data-map-ui
+      className={`pointer-events-auto absolute z-10 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-content-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+        active ? "bg-white/10 ring-2 ring-white/50" : "hover:bg-white/10"
       }`}
       style={{ left: `${x}%`, top: `${y}%` }}
     >
       {children}
     </button>
-  );
-}
-
-function SensorPin() {
-  const [hover, setHover] = useState(false);
-  return (
-    <div
-      className="pointer-events-auto absolute z-10 -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${SENSOR.x}%`, top: `${SENSOR.y}%` }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <span className="sensor-glow grid h-7 w-7 place-content-center rounded-full bg-[#d92d20]/15">
-        <Icon name="sensors" size={16} filled color="#ff5a4d" />
-      </span>
-      <AnimatePresence>
-        {hover ? (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-1/2 top-full mt-2 -translate-x-1/2 rounded-md border border-[#d92d20]/60 bg-bg/95 px-2.5 py-1.5"
-          >
-            <p className="readout whitespace-nowrap text-[9px] text-white/55">
-              SENSOR_04 · NORSEMAN INN RD
-            </p>
-            <p className="font-display text-sm font-bold text-text">
-              {SENSOR.reading}% fire likelihood
-            </p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
   );
 }
 
@@ -570,103 +626,99 @@ function InspectorCard({
       ? levelColor[entity.severity]
       : entity.kind === "broadcast"
         ? levelColor[entity.priority]
-        : "#16b364";
+        : entity.kind === "sensor"
+          ? PALETTE.urgent
+          : PALETTE.safe;
   const badge =
     entity.kind === "fire"
       ? levelWord[entity.severity]
       : entity.kind === "broadcast"
         ? "URGENT"
-        : entity.status.toUpperCase();
-
-  // Anchor the card next to its marker and keep it inside the frame. The
-  // interactive map only renders above the phone breakpoint, so there is always
-  // room for the marker-anchored placement.
-  const below = entity.y < 45;
-  const toLeft = entity.x > 55;
-  const tx = toLeft ? "calc(-100% - 14px)" : "14px";
-  const ty = below ? "10px" : "calc(-100% - 10px)";
+        : entity.kind === "sensor"
+          ? "ALERT"
+          : entity.status.toUpperCase();
 
   return (
-    <div
-      className="pointer-events-none absolute z-30"
-      style={{
-        left: `${entity.x}%`,
-        top: `${entity.y}%`,
-        transform: `translate(${tx}, ${ty})`,
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: below ? -8 : 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: below ? -6 : 6 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="pointer-events-auto w-[264px] rounded-xl border border-white/10 bg-[#141416]/95 p-4 shadow-2xl backdrop-blur-md"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <span
-            className="rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide"
-            style={{ backgroundColor: `${accent}26`, color: accent }}
-          >
-            {badge}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-6 w-6 place-content-center rounded-full bg-white/10 text-white/70 hover:bg-white/20"
-          >
-            <Icon name="close" size={14} />
-          </button>
-        </div>
+    <div className="pointer-events-auto rounded-lg border border-white/10 bg-[#141416]/95 p-4 shadow-2xl backdrop-blur-md">
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className="rounded px-2 py-0.5 text-[11px] font-bold tracking-wide"
+          style={{ backgroundColor: `${accent}26`, color: accent }}
+        >
+          {badge}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close details"
+          className="-m-2 grid h-9 w-9 place-content-center rounded text-white/70 hover:bg-white/10 hover:text-white"
+        >
+          <Icon name="close" size={14} />
+        </button>
+      </div>
 
-        <p className="mt-2.5 font-display text-lg font-bold leading-tight text-text">
-          {entity.title}
-        </p>
-        <p className="text-xs text-muted">{entity.subtitle}</p>
+      <p className="mt-2.5 font-display text-lg font-bold leading-tight text-text">
+        {entity.title}
+      </p>
+      <p className="text-xs text-muted">{entity.subtitle}</p>
 
-        <div className="mt-3 space-y-2.5">
-          {entity.kind === "fire" ? (
-            <>
-              <SeverityRow label="Severity" level={entity.severity} />
-              <BarRow
-                label="Containment"
-                value={`${entity.containment}%`}
-                pct={entity.containment}
-                color={accent}
-              />
-              <Row label="Reported" value={entity.reported} />
-              <Row label="Response" value={entity.crews} />
-              <Row label="Category" value={entity.category} />
-            </>
-          ) : entity.kind === "broadcast" ? (
-            <>
-              <SeverityRow label="Priority" level={entity.priority} />
-              <BarRow
-                label="Delivered"
-                value={`${entity.delivered}%`}
-                pct={entity.delivered}
-                color={accent}
-              />
-              <Row label="Reach" value={entity.reach} />
-              <Row label="Radius" value={entity.radius} />
-              <Row label="Sent" value={entity.sent} />
-            </>
-          ) : (
-            <>
-              <Row label="Status" value={entity.status} valueColor="#16b364" />
-              <Row label="Capacity" value={`${entity.capacity} people`} />
-              <BarRow
-                label="Occupancy"
-                value={`${entity.occupancy} / ${entity.capacity}`}
-                pct={Math.round((entity.occupancy / entity.capacity) * 100)}
-                color="#16b364"
-              />
-              <Row label="Distance" value={entity.distance} />
-              <Row label="Category" value={entity.category} />
-            </>
-          )}
-        </div>
-      </motion.div>
+      <div className="mt-3 space-y-2.5">
+        {entity.kind === "fire" ? (
+          <>
+            <SeverityRow label="Severity" level={entity.severity} />
+            <BarRow
+              label="Containment"
+              value={`${entity.containment}%`}
+              pct={entity.containment}
+              color={accent}
+            />
+            <Row label="Reported" value={entity.reported} />
+            <Row label="Response" value={entity.crews} />
+            <Row label="Category" value={entity.category} />
+          </>
+        ) : entity.kind === "broadcast" ? (
+          <>
+            <SeverityRow label="Priority" level={entity.priority} />
+            <BarRow
+              label="Delivered"
+              value={`${entity.delivered}%`}
+              pct={entity.delivered}
+              color={accent}
+            />
+            <Row label="Reach" value={entity.reach} />
+            <Row label="Radius" value={entity.radius} />
+            <Row label="Sent" value={entity.sent} />
+          </>
+        ) : entity.kind === "sensor" ? (
+          <>
+            <BarRow
+              label="Fire likelihood"
+              value={`${entity.likelihood}%`}
+              pct={entity.likelihood}
+              color={accent}
+            />
+            <Row label="Reading" value={entity.reading} />
+            <Row label="Updated" value={entity.updated} />
+          </>
+        ) : (
+          <>
+            <Row
+              label="Status"
+              value={entity.status}
+              valueColor={PALETTE.safe}
+            />
+            <Row label="Capacity" value={`${entity.capacity} people`} />
+            <BarRow
+              label="Occupancy"
+              value={`${entity.occupancy} / ${entity.capacity}`}
+              pct={Math.round((entity.occupancy / entity.capacity) * 100)}
+              color={PALETTE.safe}
+            />
+            <Row label="Distance" value={entity.distance} />
+            <Row label="Category" value={entity.category} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -698,12 +750,9 @@ function SeverityRow({ label, level }: { label: string; level: Level }) {
       <span className="flex items-center gap-2">
         <span className="flex gap-0.5">
           {[0, 1, 2].map((i) => (
-            <motion.span
+            <span
               key={i}
               className="h-1.5 w-3 rounded-sm"
-              initial={{ opacity: 0, scaleX: 0.4 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.12 + i * 0.09, duration: 0.25 }}
               style={{
                 backgroundColor: i < segs ? levelColor[level] : "#ffffff1f",
               }}
@@ -711,7 +760,7 @@ function SeverityRow({ label, level }: { label: string; level: Level }) {
           ))}
         </span>
         <span
-          className="text-[10px] font-bold"
+          className="text-[11px] font-bold"
           style={{ color: levelColor[level] }}
         >
           {levelWord[level]}
@@ -743,7 +792,7 @@ function BarRow({
           className="h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ delay: 0.18, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           style={{ backgroundColor: color }}
         />
       </div>

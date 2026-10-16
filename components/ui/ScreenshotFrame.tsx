@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Icon } from "@/components/ui/Icon";
 
 interface ScreenshotFrameProps {
@@ -12,6 +13,10 @@ interface ScreenshotFrameProps {
   className?: string;
   /** When set, the frame becomes a button that opens the image full-size. */
   onOpen?: () => void;
+  /** Rendered width hint for the responsive image. */
+  sizes?: string;
+  /** Which part of the image to keep when the frame crops it. */
+  position?: "center" | "top";
 }
 
 /**
@@ -24,6 +29,8 @@ export function ScreenshotFrame({
   aspect = "aspect-[16/10]",
   className = "",
   onOpen,
+  sizes = "(min-width: 1024px) 50vw, 100vw",
+  position = "center",
 }: ScreenshotFrameProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [missing, setMissing] = useState(false);
@@ -41,23 +48,24 @@ export function ScreenshotFrame({
   return (
     <Tag
       {...(clickable ? { type: "button" as const, onClick: onOpen } : {})}
-      className={`group relative block w-full overflow-hidden rounded-xl border border-border bg-surface ${aspect} ${
+      className={`group relative block w-full overflow-hidden rounded-lg border border-border bg-surface ${aspect} ${
         clickable ? "cursor-zoom-in" : ""
       } ${className}`}
     >
       {!missing ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             ref={imgRef}
             src={`/screenshots/${name}`}
             alt={label}
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            sizes={sizes}
+            className={`object-cover ${position === "top" ? "object-top" : "object-center"} transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]`}
             onError={() => setMissing(true)}
           />
           {clickable ? (
             <span className="pointer-events-none absolute inset-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/70 via-transparent to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              <span className="label text-white/90">{label}</span>
+              <span aria-hidden className="text-[13px] font-medium text-white">{label}</span>
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm">
                 <Icon name="open_in_full" size={15} />
               </span>

@@ -2,13 +2,39 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { MapScene, MapMarker, siteByName } from "./MapScene";
+import { PALETTE } from "@/lib/palette";
 
 const PINS = [
-  { ...siteByName("Cochrane"), icon: "local_fire_department", color: "#d92d20", delay: 0.1 },
-  { ...siteByName("Dryden"), icon: "photo_camera", color: "#f79009", delay: 0.5 },
-  { ...siteByName("Sioux Lookout"), icon: "photo_camera", color: "#f79009", delay: 0.9 },
-  { ...siteByName("Thunder Bay"), icon: "health_and_safety", color: "#16b364", delay: 1.3 },
-  { ...siteByName("Red Lake"), icon: "local_fire_department", color: "#d92d20", delay: 1.7 },
+  {
+    ...siteByName("Cochrane"),
+    icon: "local_fire_department",
+    color: PALETTE.urgent,
+    delay: 0.1,
+  },
+  {
+    ...siteByName("Dryden"),
+    icon: "photo_camera",
+    color: PALETTE.high,
+    delay: 0.5,
+  },
+  {
+    ...siteByName("Sioux Lookout"),
+    icon: "photo_camera",
+    color: PALETTE.high,
+    delay: 0.9,
+  },
+  {
+    ...siteByName("Thunder Bay"),
+    icon: "health_and_safety",
+    color: PALETTE.safe,
+    delay: 1.3,
+  },
+  {
+    ...siteByName("Red Lake"),
+    icon: "local_fire_department",
+    color: PALETTE.urgent,
+    delay: 1.7,
+  },
 ];
 
 export function LiveMap() {
@@ -26,20 +52,20 @@ export function LiveMap() {
           cx={PINS[0].x}
           cy={PINS[0].y}
           r={80}
-          fill="#d92d20"
+          fill={PALETTE.urgent}
           fillOpacity={0.08}
-          stroke="#d92d20"
+          stroke={PALETTE.urgent}
           strokeOpacity={0.45}
           initial={{ scale: reduced ? 1 : 0, opacity: reduced ? 1 : 0 }}
           animate={
             reduced
               ? { scale: 1, opacity: 1 }
-              : { scale: [0, 1, 1, 1], opacity: [0, 1, 1, 0] }
+              : { scale: [0, 1, 1, 1], opacity: [0, 1, 1, 1] }
           }
           transition={
             reduced
               ? undefined
-              : { duration: D, repeat: Infinity, times: [0, 0.08, 0.9, 1] }
+              : { duration: D, repeat: 0, times: [0, 0.08, 0.9, 1] }
           }
           style={{ transformOrigin: `${PINS[0].x}px ${PINS[0].y}px` }}
         />
@@ -57,14 +83,14 @@ export function LiveMap() {
           animate={
             reduced
               ? { opacity: 1, scale: 1 }
-              : { opacity: [0, 1, 1, 1, 0], scale: [0.4, 1.18, 1, 1, 0.9] }
+              : { opacity: [0, 1, 1, 1, 1], scale: [0.4, 1.18, 1, 1, 1] }
           }
           transition={
             reduced
               ? undefined
               : {
                   duration: D,
-                  repeat: Infinity,
+                  repeat: 0,
                   delay: p.delay,
                   times: [0, 0.04, 0.08, 0.92, 1],
                   ease: "easeOut",

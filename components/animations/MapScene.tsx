@@ -1,8 +1,14 @@
 "use client";
 
-import type { ComponentProps, CSSProperties, ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import {
+  useRef,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { Icon } from "@/components/ui/Icon";
+import { PALETTE } from "@/lib/palette";
 
 /* One shared map view for every animation, so the Mapbox static image is
    requested (and cached) exactly once for the whole page. */
@@ -78,15 +84,26 @@ export const pctY = (y: number) => `${(y / MAP_H) * 100}%`;
 export function MapScene({
   children,
   note,
+  always = false,
 }: {
   children: ReactNode;
   note?: string;
+  /** Render children whether or not the scene is on screen (static scenes). */
+  always?: boolean;
 }) {
+  // Animations only run while the scene is on screen, and start from their
+  // first frame each time it scrolls into view.
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.35 });
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface">
+    <div
+      ref={ref}
+      className="overflow-hidden rounded-lg border border-border bg-surface"
+    >
       <div
         className="relative w-full"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
+        aria-hidden
       >
         {MAP_IMG_URL ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -99,16 +116,16 @@ export function MapScene({
           />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-b from-bg/10 via-transparent to-bg/25" />
-        {children}
+        {inView || always ? children : null}
         {MAP_IMG_URL ? (
-          <span className="absolute bottom-1 right-2 text-[9px] text-white/35">
+          <span className="absolute bottom-1 right-2 text-[10px] text-white/60">
             © Mapbox © OpenStreetMap
           </span>
         ) : null}
       </div>
 
       {note ? (
-        <p className="border-t border-border px-4 py-2.5 text-xs leading-relaxed text-muted/80">
+        <p className="border-t border-border px-4 py-2.5 text-xs leading-relaxed text-muted">
           {note}
         </p>
       ) : null}
@@ -121,7 +138,7 @@ type MotionProps = Pick<
   "initial" | "animate" | "transition"
 >;
 
-/** Google-font icon marker positioned on the map; accepts motion props. */
+/** Icon marker positioned on the map; accepts motion props. */
 export function MapMarker({
   x,
   y,
@@ -147,11 +164,7 @@ export function MapMarker({
       className="absolute -translate-x-1/2 -translate-y-1/2"
       style={{ left: pctX(x), top: pctY(y), ...style }}
     >
-      <motion.div
-        initial={initial}
-        animate={animate}
-        transition={transition}
-      >
+      <motion.div initial={initial} animate={animate} transition={transition}>
         <Icon
           name={name}
           size={size}
@@ -164,7 +177,7 @@ export function MapMarker({
   );
 }
 
-/** Small pill overlaid on the map (used only for the safety score). */
+/** Small label overlaid on the map. */
 export function MapTag({
   x,
   y,
@@ -184,7 +197,7 @@ export function MapTag({
         : "border-white/20 text-white/80";
   return (
     <div
-      className={`label absolute -translate-x-1/2 -translate-y-1/2 rounded-md border bg-bg/85 px-2 py-1 text-[10px] ${ring}`}
+      className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded border bg-bg/90 px-2 py-1 text-[11px] font-semibold ${ring}`}
       style={{ left: pctX(x), top: pctY(y) }}
     >
       {children}
@@ -197,7 +210,7 @@ export function ZoneCircle({
   x,
   y,
   r,
-  color = "#16b364",
+  color = PALETTE.safe,
 }: {
   x: number;
   y: number;
@@ -237,7 +250,14 @@ export function PulseRings({
   const reduced = useReducedMotion();
   if (reduced) {
     return (
-      <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeOpacity={0.5} />
+      <circle
+        cx={x}
+        cy={y}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeOpacity={0.5}
+      />
     );
   }
   return (

@@ -7,21 +7,20 @@ export const site = {
   name: "ResQd",
   tagline: "Cloud-native wildfire response.",
   hero: {
-    kicker: "Wildfire situational awareness",
     headline: "Wildfire response that keeps up with the fire.",
-    sub: "ResQd is a wildfire emergency-response platform. It pulls field sensors, citizen reports, and evacuation routing onto one live map, so dispatchers see the fire early and move people before it reaches the road.",
+    sub: "Field sensors, citizen reports and evacuation routing on one live map, so dispatchers see the fire early and move people before it reaches the road.",
     primaryCta: { label: "Join the waitlist", href: "#waitlist" },
     secondaryCta: { label: "See how it works", href: "#how-it-works" },
-    scrollCue: "Scroll to explore",
   },
 } as const;
 
 export const nav = {
+  // In page order.
   links: [
-    { label: "The problem", href: "#problem" },
-    { label: "Platform", href: "#platform" },
     { label: "How it works", href: "#how-it-works" },
-    { label: "Use cases", href: "#in-action" },
+    { label: "Problem", href: "#problem" },
+    { label: "Platform", href: "#platform" },
+    { label: "Architecture", href: "#architecture" },
     { label: "Dashboard", href: "#dashboard" },
   ],
   cta: { label: "Join the waitlist", href: "#waitlist" },
@@ -55,44 +54,75 @@ export const problem = {
 } as const;
 
 export const platform = {
-  heading: "One map for the sensors, the reports, and the people.",
-  sub: "Five parts of the same system. Each one feeds the live picture dispatchers work from.",
+  heading: "What a dispatcher can do from one screen.",
+  sub: "Detect a fire, confirm it, warn the people in its path and route them out, all from the same live map.",
+} as const;
+
+export const productStory = {
+  heading: "One incident, from first reading to evacuation.",
+  sub: "The dispatcher's console and a resident's phone, showing the same incident as it unfolds.",
+  steps: [
+    {
+      time: "00:00",
+      key: "detect",
+      title: "A fire is detected",
+      desc: "A field sensor's heat and smoke readings spike and the model flags a fire at 89% confidence. Residents can also report one with a photo from the app.",
+    },
+    {
+      time: "00:04",
+      key: "report",
+      title: "A report lands on the map",
+      desc: "The report drops onto the dispatcher's live map as a pending review.",
+    },
+    {
+      time: "00:11",
+      key: "verify",
+      title: "A responder verifies it",
+      desc: "Dispatch reviews the report and converts it into a tracked incident with a severity band.",
+    },
+    {
+      time: "00:19",
+      key: "broadcast",
+      title: "An evacuation zone goes out",
+      desc: "The dispatcher draws a broadcast radius, sets the priority, and sends an urgent evacuation order.",
+    },
+    {
+      time: "00:20",
+      key: "alert",
+      title: "Phones in the radius alert",
+      desc: "Every device inside the zone picks up the warning on its next 15-second poll.",
+    },
+    {
+      time: "00:27",
+      key: "route",
+      title: "The safest way out",
+      desc: "The app routes each person to the nearest safe zone, along the path that stays clear of the active fire.",
+    },
+  ],
 } as const;
 
 export const howItWorks = {
-  heading: "Cloud-native, built to stay up.",
-  sub: "Sensor data and citizen reports move through a queue, a cache, and one always-on API that serves both the dispatcher dashboard and the civilian app in real time.",
+  heading: "How a reading reaches the dispatcher.",
+  sub: "One always-on API serves both the dashboard and the app.",
   steps: [
-    { label: "IoT sensors", note: "Dockerised nodes stream readings every ~30s" },
-    { label: "AWS SQS", note: "Queue absorbs bursts without dropping data" },
-    { label: "AWS Lambda", note: "Normalises, validates, runs change detection" },
-    { label: "Redis", note: "Latest reading per sensor, 15-minute TTL" },
-    { label: "FastAPI + WebSocket", note: "37 endpoints, live events to every client" },
-    { label: "MongoDB Atlas + S3", note: "Incidents and reports; photos in S3" },
-    { label: "Dashboard + mobile app", note: "Responders and civilians, same source of truth" },
+    { label: "Sensors report in", tech: "IoT sensors", note: "Readings every ~30 s", detail: "Dockerized nodes stream a reading about every 30 seconds." },
+    { label: "Readings queue up", tech: "AWS SQS", note: "A burst drops nothing", detail: "A queue absorbs bursts of readings without dropping data, so a spike during a fire is not lost." },
+    { label: "Checked for changes", tech: "AWS Lambda", note: "Validated, change-detected", detail: "Each reading is normalized and validated, then checked for meaningful change." },
+    { label: "Latest reading held", tech: "Redis", note: "15 min TTL per sensor", detail: "The latest reading per sensor is held in a cache with a 15-minute TTL." },
+    { label: "Pushed to every screen", tech: "FastAPI + WebSocket", note: "37 endpoints, live events", detail: "37 endpoints, with live events pushed to every connected client." },
+    { label: "Incidents and photos stored", tech: "MongoDB Atlas + S3", note: "Incidents, reports, photos", detail: "Incidents and reports live in MongoDB; photos go straight to S3." },
+    { label: "Dashboard and app", tech: "Responders and civilians", note: "One source of truth", detail: "Responders and civilians read from the same source of truth." },
   ],
-  diagramNote:
-    "Proposed cloud architecture. This will change as the project progresses.",
 } as const;
 
-export const useCases = {
-  heading: "Where it earns its place.",
+export const systemFacts = {
+  label: "System facts",
+  note: "From the simulated sensor network.",
   items: [
-    {
-      icon: "local_fire_department",
-      title: "Community structure fire",
-      body: "A verified report becomes a tracked incident on the map. Dispatch draws an evacuation broadcast and every phone inside the radius gets it on the next poll.",
-    },
-    {
-      icon: "alt_route",
-      title: "Evacuation coordination",
-      body: "Routing scores each way out against active hazards and picks the one that stays clear of the fire, not just the shortest one.",
-    },
-    {
-      icon: "sensors",
-      title: "Early detection in remote forest",
-      body: "Sensors in high-risk zones flag a rising heat and smoke signature before anyone calls it in, so responders start moving sooner.",
-    },
+    { value: "7", unit: "sensor nodes", label: "northern Ontario towns", source: "Sensor layer" },
+    { value: "13,611", unit: "readings", label: "behind the detection model", source: "Detection model" },
+    { value: "12", unit: "metrics", label: "in every sensor reading", source: "Sensor layer" },
+    { value: "14", unit: "events", label: "streamed over WebSocket", source: "Realtime layer" },
   ],
 } as const;
 
@@ -102,13 +132,13 @@ export const dashboard = {
 } as const;
 
 export const gallery = {
-  heading: "See it running.",
-  sub: "Screen captures from the dispatcher dashboard and the civilian app.",
+  heading: "Dashboard and app, as built.",
+  sub: "Captures from the dispatcher dashboard and the civilian app, running on simulated sensor data.",
 } as const;
 
 export const waitlist = {
   heading: "Get early access.",
-  body: "We're working with a small number of departments to shape ResQd in the field. Join the waitlist to be first in line for pilot access and product updates.",
+  body: "Join the waitlist to be first in line for pilot access and product updates.",
   roles: [
     "Fire service / first responder",
     "Emergency management",
@@ -116,13 +146,16 @@ export const waitlist = {
     "Researcher",
     "Other",
   ],
+  // The one place the site states its stage, right where people decide.
+  status:
+    "ResQd is operational in testing and still in development ahead of deployment.",
   successTitle: "You're on the list.",
   successBody: "We'll be in touch as pilot spots open up.",
 } as const;
 
 export const footer = {
   tagline:
-    "Situational awareness from first spark to full evacuation. Built for the people making the call and the people getting out.",
+    "Wildfire response software for dispatchers, and for the people they need to reach.",
   email: "sahildutta.work@gmail.com",
 } as const;
 

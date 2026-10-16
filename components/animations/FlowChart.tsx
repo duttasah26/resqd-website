@@ -1,125 +1,105 @@
 "use client";
 
-import { Fragment } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { Icon } from "@/components/ui/Icon";
+import { useRef } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
+import { howItWorks } from "@/lib/content";
 
-const STEPS = [
-  {
-    icon: "sensors",
-    title: "A fire is detected",
-    body: "Field sensors and citizen photo reports flag it early.",
-  },
-  {
-    icon: "map",
-    title: "It hits the live map",
-    body: "The signal lands on the dispatcher's map as an incident.",
-  },
-  {
-    icon: "verified_user",
-    title: "A responder verifies",
-    body: "Confirmed reports become tracked incidents in real time.",
-  },
-  {
-    icon: "campaign",
-    title: "The zone is alerted",
-    body: "An evacuation broadcast reaches every phone in the radius.",
-  },
-  {
-    icon: "route",
-    title: "People get a way out",
-    body: "Routing returns the safest path around the fire, not the shortest.",
-  },
+/*
+  The real pipeline, as one line with seven stops. It is scroll-driven: the
+  line fills and each stop lights as the reader scrolls past, so the reader
+  sets the pace and nothing loops. Horizontal from lg, vertical below.
+*/
+
+const STOPS = howItWorks.steps;
+const GROUPS = [
+  { label: "Ingest", from: 0, to: 2 },
+  { label: "Process", from: 2, to: 4 },
+  { label: "Serve", from: 4, to: 7 },
 ];
 
-const WAVE = 1.8; // seconds for the pulse to travel one step
+function Dot({
+  at,
+  p,
+  still,
+}: {
+  at: number;
+  p: MotionValue<number>;
+  still: boolean;
+}) {
+  const opacity = useTransform(p, [Math.max(at - 0.06, 0), at + 0.0001], [0.15, 1]);
+  return (
+    <motion.span
+      className="h-[7px] w-[7px] rounded-full bg-urgent"
+      style={still ? undefined : { opacity }}
+    />
+  );
+}
 
 export function FlowChart() {
-  const reduced = useReducedMotion();
-  const cycle = WAVE * STEPS.length;
+  const reduced = useReducedMotion() ?? false;
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: p } = useScroll({
+    target: ref,
+    offset: ["start 78%", "end 52%"],
+  });
+  const n = STOPS.length;
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-      {STEPS.map((step, i) => (
-        <Fragment key={step.title}>
-          {i > 0 ? (
-            <motion.div
-              className="mx-auto shrink-0 self-center lg:mx-0"
-              animate={
-                reduced
-                  ? undefined
-                  : { opacity: [0.35, 1, 0.35], scale: [1, 1.25, 1] }
-              }
-              transition={
-                reduced
-                  ? undefined
-                  : {
-                      duration: 1.1,
-                      repeat: Infinity,
-                      repeatDelay: cycle - 1.1,
-                      delay: (i - 0.5) * WAVE,
-                      ease: "easeInOut",
-                    }
-              }
-            >
-              <Icon
-                name="chevron_right"
-                size={22}
-                className="rotate-90 text-urgent/70 lg:rotate-0"
-              />
-            </motion.div>
-          ) : null}
-
-          <motion.div
-            initial={reduced ? undefined : { opacity: 0, y: 18 }}
-            whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{
-              duration: 0.5,
-              delay: i * 0.08,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="flex flex-1 flex-col gap-4 rounded-2xl border border-border bg-surface/50 p-6 sm:p-7"
+    <div ref={ref}>
+      {/* group labels, desktop */}
+      <div className="hidden grid-cols-7 lg:grid">
+        {GROUPS.map((g) => (
+          <p
+            key={g.label}
+            className="pb-4 text-[13px] font-medium text-muted"
+            style={{ gridColumn: `${g.from + 1} / ${g.to + 1}` }}
           >
-            <motion.div
-              className="flex h-14 w-14 items-center justify-center rounded-xl bg-urgent/10 text-urgent"
-              animate={
-                reduced
-                  ? undefined
-                  : {
-                      boxShadow: [
-                        "0 0 0 0 rgba(217,45,32,0)",
-                        "0 0 18px 2px rgba(217,45,32,0.55)",
-                        "0 0 0 0 rgba(217,45,32,0)",
-                      ],
-                    }
-              }
-              transition={
-                reduced
-                  ? undefined
-                  : {
-                      duration: 1.2,
-                      repeat: Infinity,
-                      repeatDelay: cycle - 1.2,
-                      delay: i * WAVE,
-                      ease: "easeInOut",
-                    }
-              }
+            {g.label}
+          </p>
+        ))}
+      </div>
+
+      <ol className="relative grid gap-0 lg:grid-cols-7">
+        {/* the track: vertical on mobile, horizontal on desktop */}
+        <span
+          aria-hidden
+          className="absolute bottom-[36px] left-[7px] top-[11px] w-px bg-border lg:bottom-auto lg:left-[7px] lg:right-[calc(100%/7-7px)] lg:top-[7px] lg:h-px lg:w-auto"
+        />
+        {/* the fill, driven by scroll */}
+        <motion.span
+          aria-hidden
+          className="absolute bottom-[36px] left-[7px] top-[11px] w-px origin-top bg-urgent lg:hidden"
+          style={reduced ? undefined : { scaleY: p }}
+        />
+        <motion.span
+          aria-hidden
+          className="absolute hidden origin-left bg-urgent lg:left-[7px] lg:right-[calc(100%/7-7px)] lg:top-[7px] lg:block lg:h-px"
+          style={reduced ? undefined : { scaleX: p }}
+        />
+
+        {STOPS.map((s, i) => (
+          <li
+            key={s.label}
+            className="relative h-12 pl-8 lg:h-auto lg:pl-0 lg:pr-5 lg:pt-8"
+          >
+            <span
+              aria-hidden
+              className="absolute left-0 top-1 grid h-[15px] w-[15px] place-content-center rounded-full border border-line-strong bg-bg lg:top-0"
             >
-              <Icon name={step.icon} size={26} filled />
-            </motion.div>
-            <div>
-              <p className="readout text-[10px] text-muted/50">Step {i + 1}</p>
-              <h3 className="mt-1 font-display text-lg font-bold leading-tight text-text sm:text-xl">
-                {step.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {step.body}
-              </p>
-            </div>
-          </motion.div>
-        </Fragment>
-      ))}
+              <Dot at={i / (n - 1)} p={p} still={reduced} />
+            </span>
+            <p className="font-display text-[15px] font-bold leading-snug text-text lg:min-h-[2.75em]">
+              {s.label}
+            </p>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
