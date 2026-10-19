@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Archivo, Roboto_Mono } from "next/font/google";
 import "./globals.css";
+import { Preloader } from "@/components/Preloader";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${archivo.variable} ${robotoMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-text">
+        <Preloader />
         <div aria-hidden className="page-aura" />
         {children}
       </body>

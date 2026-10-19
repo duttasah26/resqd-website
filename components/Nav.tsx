@@ -102,7 +102,8 @@ export function Nav() {
             width={1854}
             height={848}
             priority
-            className="h-10 w-auto object-contain"
+            data-navlogo
+            className="h-11 w-auto object-contain"
           />
         </a>
 
